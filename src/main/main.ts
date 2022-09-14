@@ -14,6 +14,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import nfcController from './nfcController';
 
 class AppUpdater {
   constructor() {
@@ -88,6 +89,7 @@ const createWindow = async () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
+    ipcMain.on('click', nfcController.send);
     if (process.env.START_MINIMIZED) {
       mainWindow.minimize();
     } else {
