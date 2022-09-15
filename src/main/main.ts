@@ -13,8 +13,9 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
+import * as db from './db';
 import { resolveHtmlPath } from './util';
-import nfcController from './nfcController';
+import NfcController from './nfcController';
 
 class AppUpdater {
   constructor() {
@@ -85,17 +86,21 @@ const createWindow = async () => {
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 
+  const nfcController = new NfcController(mainWindow.webContents);
+
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
-    ipcMain.on('click', nfcController.send);
     if (process.env.START_MINIMIZED) {
       mainWindow.minimize();
     } else {
       mainWindow.show();
     }
+    nfcController.initNfc();
   });
+  ipcMain.on('start', nfcController.start);
+  ipcMain.on('stop', nfcController.stop);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -126,6 +131,8 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+db.setup();
 
 app
   .whenReady()
