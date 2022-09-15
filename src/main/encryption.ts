@@ -54,12 +54,18 @@ export default class Encryption {
 
   encryptDes(plainText) {
     const buffer = Buffer.from(plainText, 'hex');
-    return this.encrypt(buffer, Buffer.from(this.#secretKeySub1, 'hex'));
+    return this.encrypt(
+      buffer,
+      Buffer.from(this.#secretKeySub1, 'hex')
+    ).toString('hex');
   }
 
   decryptDes(plainText) {
     const buffer = Buffer.from(plainText, 'hex');
-    return this.decrypt(buffer, Buffer.from(this.#secretKeySub1, 'hex'));
+    return this.decrypt(
+      buffer,
+      Buffer.from(this.#secretKeySub1, 'hex')
+    ).toString('hex');
   }
 
   /**
