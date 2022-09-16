@@ -5,6 +5,7 @@ import EventEmitter from 'events';
 import Encryption from './encryption';
 import { alert } from './util';
 import { Fob } from './db';
+import ResponseError from './ResponseError';
 
 const delay = (time) => new Promise((resolve) => setTimeout(resolve, time));
 
@@ -37,48 +38,64 @@ export default class NfcController extends EventEmitter {
         console.log(`card detected: ${fobNumber}`);
         this.webContents.send('card', fobNumber);
         if (!this.started) return;
-        let fob = await Fob.findOne({ where: { fobNumber } });
-        if (fob?.secret) {
-          alert('error', 'The fob has been initialized');
-          return;
-        }
-        if (!fob) {
-          fob = await Fob.create({ fobNumber });
-        }
+        try {
+          let fob = await Fob.findOne({ where: { fobNumber } });
+          if (fob?.uploaded) {
+            alert('error', 'The fob has been uploaded');
+            return;
+          }
 
-        // let res = await this.selectFob(fob);
-        await delay(120); // TODO find reset function if possible
-        let res = await this.doExternalAuthentication(fob); // TODO test to check all error
-        if (res === '6984') {
-          res = await this.doExternalAuthentication(fob);
-        }
-        if (res === '6a88') {
-          res = await this.createFile(fob);
-          if (res !== '6a86' && res !== '9000') {
-            alert('error', `Create File error: ${res}`);
+          if (!fob) fob = await Fob.create({ fobNumber });
+
+          await this.selectFob(fob);
+          await delay(200); // TODO find reset function if possible
+
+          const secret = fob.secret && !fob.initialized ? fob.secret : null;
+          let res = await this.doExternalAuthentication(fob, secret); // TODO test to check all error
+          if (res.slice(0, 3) === '63c') {
+            alert(
+              'error',
+              `External authentication error: res = ${res === '' ? '""' : res}`
+            );
+          } else if (res === '6a88') {
+            // 6a88: key not found
+            res = await this.createFile(fob);
+            // 6a86: the param P1 or P2 is wrong (the file has been created)
+            if (res !== '6a86' && res !== '9000') {
+              alert(
+                'error',
+                `Create file error: res = ${res === '' ? '""' : res}`
+              );
+              return;
+            }
+            await this.addSecret(fob);
+          } else if (res !== '9000') {
+            alert(
+              'error',
+              `External authentication error: res = ${res === '' ? '""' : res}`
+            );
+          } else {
+            res = await this.cleanData(fob);
+            res = await this.createFile(fob);
+            if (res !== '9000') {
+              alert(
+                'error',
+                `Create file error: res = ${res === '' ? '""' : res}`
+              );
+              return;
+            }
+            await this.addSecret(fob);
+            // TODO upload
+          }
+        } catch (err) {
+          if (err instanceof ResponseError) {
+            alert(
+              'error',
+              `${err.message}: res = ${err.res === '' ? '""' : err.res}`
+            );
             return;
           }
-          res = await this.addSecret(fob);
-          if (res !== '9000') {
-            alert('error', `Add Secret error: ${res}`);
-          }
-        } else if (res !== '9000') {
-          alert('error', `External authentication error: ${res}`);
-        } else {
-          res = await this.cleanData(fob);
-          if (res !== '9000') {
-            alert('error', `Clean data error: ${res}`);
-            return;
-          }
-          res = await this.createFile(fob);
-          if (res !== '9000') {
-            alert('error', `Create file error: ${res}`);
-            return;
-          }
-          res = await this.addSecret(fob); // TODO if not complete, add column to save secret to revert back
-          if (res !== '9000') {
-            alert('error', `Add Secret error: ${res}`);
-          }
+          alert('error', JSON.stringify(err));
         }
       });
 
@@ -93,7 +110,7 @@ export default class NfcController extends EventEmitter {
       });
 
       reader.on('error', (err: Error) => {
-        console.log(`an error occurred`, reader.reader.name, err);
+        console.log(`reader: an error occurred`, reader.reader.name, err);
       });
 
       reader.on('end', () => {
@@ -102,7 +119,7 @@ export default class NfcController extends EventEmitter {
     });
 
     this.nfc.on('error', (err: Error) => {
-      console.log(`an error occurred`, err);
+      console.log(`nfc: an error occurred`, err);
     });
   };
 
@@ -110,23 +127,35 @@ export default class NfcController extends EventEmitter {
     return this.transmit(fob, 'Select MF', '00A40000023F00');
   };
 
-  doExternalAuthentication = async (fob: Fob) => {
-    const res = await this.transmit(
+  doExternalAuthentication = async (fob: Fob, secret: string | null) => {
+    let res = await this.transmit(
       fob,
       'Get random numbers',
       '008400000400000000'
     );
-    if (res.slice(-4) !== '9000') {
-      return res;
-    }
-    const encryption = new Encryption('FFFFFFFFFFFFFFFF'); // TODO update to random 3DES key
-    const randomStr = res.slice(0, 8);
-    const encrypted = encryption.encryptDes(`${randomStr}00000000`);
-    return this.transmit(
+    const encryption = new Encryption(secret || 'FFFFFFFFFFFFFFFF');
+    let randomStr = res.slice(0, 8);
+    let encrypted = encryption.encrypt(`${randomStr}00000000`);
+    res = await this.transmit(
       fob,
       'External Authentication',
       `0082000008${encrypted}`
     );
+    if (res === '6984') {
+      res = await this.transmit(
+        fob,
+        'Get random numbers',
+        '008400000400000000'
+      );
+      randomStr = res.slice(0, 8);
+      encrypted = encryption.encrypt(`${randomStr}00000000`);
+      return this.transmit(
+        fob,
+        'External Authentication',
+        `0082000008${encrypted}`
+      );
+    }
+    return res;
   };
 
   cleanData = async (fob: Fob) => {
@@ -138,16 +167,10 @@ export default class NfcController extends EventEmitter {
   };
 
   addSecret = async (fob: Fob) => {
-    const secret = 'FFFFFFFFFFFFFFFF';
-    const res = await this.transmit(
-      fob,
-      'Add secret',
-      `80D401000D39F0F1AAFF${secret}`
-    );
-    if (res === '9000') {
-      await fob.update({ secret });
-    }
-    return res;
+    const secret = 'FFFFFFFFFFFFFFFF'; // TODO update to random 3DES key
+    await fob.update({ secret });
+    await this.transmit(fob, 'Add secret', `80D401000D39F0F1AAFF${secret}`);
+    await fob.update({ initialized: true });
   };
 
   start = () => {
@@ -165,6 +188,11 @@ export default class NfcController extends EventEmitter {
       'hex'
     );
     await this.display(fob, state, 'res', res);
+    if (state === 'External Authentication' || state === 'Create file')
+      return res; // check the res in main func
+    if (res === '') throw new ResponseError(`${state} error`, '""');
+    if (res.slice(-4) !== '9000')
+      throw new ResponseError(`${state} error`, res);
     return res;
   };
 

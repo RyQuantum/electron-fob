@@ -17,6 +17,8 @@ export class Fob extends Model {
 
   declare state: CreationOptional<string>;
 
+  declare initialized: CreationOptional<boolean>;
+
   declare uploaded: CreationOptional<boolean>;
 }
 
@@ -38,6 +40,11 @@ Fob.init(
     state: {
       type: new DataTypes.STRING(30),
       allowNull: true,
+    },
+    initialized: {
+      type: new DataTypes.BOOLEAN(),
+      allowNull: false,
+      defaultValue: false,
     },
     uploaded: {
       type: new DataTypes.BOOLEAN(),
