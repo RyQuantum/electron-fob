@@ -1,4 +1,4 @@
-import { WebContents, ipcMain } from 'electron';
+import { WebContents, ipcMain, IpcMainEvent } from 'electron';
 import { NFC, Reader } from 'nfc-pcsc';
 import EventEmitter from 'events';
 
@@ -14,7 +14,7 @@ export default class NfcController extends EventEmitter {
 
   private reader: Reader = null;
 
-  private started = false;
+  private running = false;
 
   constructor(webContents: WebContents) {
     super();
@@ -23,22 +23,24 @@ export default class NfcController extends EventEmitter {
     ipcMain.on('stop', this.stop);
   }
 
-  start = (_event: Event, args: [string]) => {
-    const [fobNumber] = args; // TODO find a way do not destructure
+  start = (event: IpcMainEvent, args: [string]) => {
+    const [fobNumber] = args;
     if (fobNumber !== '') {
       alert('error', 'Please remove the fob from the reader, then start.');
+      event.reply('start', 0);
       return;
     }
     if (!this.reader) {
       alert('error', 'No NFC reader is found');
-      this.webContents.send('interrupt');
+      event.reply('start', 0);
       return;
     }
-    this.started = true;
+    this.running = true;
+    event.reply('start', 1);
   };
 
   stop = () => {
-    this.started = false;
+    this.running = false;
   };
 
   initNfc = () => {
@@ -56,7 +58,7 @@ export default class NfcController extends EventEmitter {
         console.log(`card detected: ${fobNumber}`);
         this.webContents.send('card', fobNumber);
 
-        if (!this.started) return;
+        if (!this.running) return;
         this.webContents.send('initializing', true);
 
         try {
@@ -145,7 +147,8 @@ export default class NfcController extends EventEmitter {
         console.log(`device removed`, reader.reader.name);
         this.reader.removeAllListeners();
         this.reader = null;
-        this.started = false;
+        if (this.running) alert('error', 'NFC reader is unplugged!');
+        this.running = false;
         this.webContents.send('interrupt');
       });
     });

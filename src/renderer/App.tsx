@@ -171,8 +171,10 @@ const FobLogs: React.FC = () => {
                     ipcRenderer.sendMessage('stop', []);
                     setIsRunning(0);
                   } else {
+                    ipcRenderer.once('start', (arg: number) =>
+                      setIsRunning(arg)
+                    );
                     ipcRenderer.sendMessage('start', [fobNumber]);
-                    if (fobNumber === '') setIsRunning(1);
                   }
                 }}
               >
