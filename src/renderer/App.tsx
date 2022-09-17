@@ -1,5 +1,5 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import { Button, Table, List, Radio } from 'antd';
+import { Button, Table, List, Radio, Badge, Checkbox } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useEvent } from 'react-use';
@@ -7,6 +7,7 @@ import { useEvent } from 'react-use';
 import 'antd/dist/antd.css';
 import './App.css';
 import { Fob } from '../main/db';
+import nfc from '../../assets/nfc.gif';
 
 const { ipcRenderer } = window.electron;
 
@@ -25,11 +26,18 @@ const columns = [
     title: 'State',
     dataIndex: 'state',
     key: 'state',
+    render: (text: string) => (
+      <span>
+        {text === 'Add secret - 9000' && <Badge status="success" />}
+        {text}
+      </span>
+    ),
   },
   {
     title: 'Uploaded',
     dataIndex: 'uploaded',
     key: 'uploaded',
+    render: (checked: boolean) => <Checkbox checked={checked} />,
   },
 ];
 
@@ -103,6 +111,12 @@ const FobLogs: React.FC = () => {
   }, []);
   useEvent('card', handleConnectEvent, ipcRenderer);
 
+  const [isInitializing, setIsInitializing] = useState(false);
+  const handleRunningEvent = useCallback((state: boolean) => {
+    setIsInitializing(state);
+  }, []);
+  useEvent('initializing', handleRunningEvent, ipcRenderer);
+
   const ref = useRef({ fobNumber: '' });
   const [logs, setLogs] = useState<string[]>([]);
   const handleUsbEvent = useCallback((fob: Fob, direction: 'req' | 'res') => {
@@ -120,7 +134,9 @@ const FobLogs: React.FC = () => {
   }, []);
   useEvent('log', handleUsbEvent, ipcRenderer);
 
-  const [runningState, setRunningState] = useState(0); // 0: failed; 1: pending; 2: success
+  const [isRunning, setIsRunning] = useState(0); // 0: stopped; 1: running
+  const handleInterruptEvent = useCallback(() => setIsRunning(0), []);
+  useEvent('interrupt', handleInterruptEvent, ipcRenderer);
 
   const refs = useRef<HTMLElement[]>([]);
   useEffect(() => refs.current.at(logs.length - 1)?.scrollIntoView(), [logs]);
@@ -135,28 +151,32 @@ const FobLogs: React.FC = () => {
               <Radio checked={fobNumber !== ''}>
                 Fob {fobNumber !== '' ? `: ${fobNumber}` : ' not detected'}
               </Radio>
+              {isInitializing && (
+                <LoadingOutlined style={{ fontSize: '16px' }} />
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center' }}>
               {
-                [null, <LoadingOutlined style={{ fontSize: '16px' }} />][
-                  runningState
+                [null, <img src={nfc} alt="nfc" style={{ height: 22 }} />][
+                  isRunning
                 ]
               }
-              &nbsp;
+              NFC &nbsp;
               <Button
                 className="button"
                 type="primary"
+                style={{ width: 60 }}
                 onClick={() => {
-                  if (runningState) {
-                    ipcRenderer.sendMessage('stop', null);
-                    setRunningState(0);
+                  if (isRunning) {
+                    ipcRenderer.sendMessage('stop', []);
+                    setIsRunning(0);
                   } else {
-                    ipcRenderer.sendMessage('start', null);
-                    setRunningState(1);
+                    ipcRenderer.sendMessage('start', [fobNumber]);
+                    if (fobNumber === '') setIsRunning(1);
                   }
                 }}
               >
-                {runningState ? 'End' : 'Start'}
+                {isRunning ? ' Stop ' : 'Start'}
               </Button>
             </div>
           </div>

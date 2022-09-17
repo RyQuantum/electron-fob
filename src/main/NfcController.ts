@@ -1,32 +1,50 @@
-import { WebContents } from 'electron';
-import { NFC } from 'nfc-pcsc';
+import { WebContents, ipcMain } from 'electron';
+import { NFC, Reader } from 'nfc-pcsc';
 import EventEmitter from 'events';
 
-import Encryption from './encryption';
-import { alert } from './util';
+import Encryption from './Encryption';
+import { alert, delay } from './util';
 import { Fob } from './db';
 import ResponseError from './ResponseError';
-
-const delay = (time) => new Promise((resolve) => setTimeout(resolve, time));
 
 export default class NfcController extends EventEmitter {
   private webContents: WebContents;
 
-  private nfc;
+  private nfc: NFC = null;
 
-  private reader;
+  private reader: Reader = null;
 
   private started = false;
 
   constructor(webContents: WebContents) {
     super();
     this.webContents = webContents;
+    ipcMain.on('start', this.start);
+    ipcMain.on('stop', this.stop);
   }
+
+  start = (_event: Event, args: [string]) => {
+    const [fobNumber] = args; // TODO find a way do not destructure
+    if (fobNumber !== '') {
+      alert('error', 'Please remove the fob from the reader, then start.');
+      return;
+    }
+    if (!this.reader) {
+      alert('error', 'No NFC reader is found');
+      this.webContents.send('interrupt');
+      return;
+    }
+    this.started = true;
+  };
+
+  stop = () => {
+    this.started = false;
+  };
 
   initNfc = () => {
     this.nfc = new NFC();
 
-    this.nfc.on('reader', async (reader) => {
+    this.nfc.on('reader', async (reader: Reader) => {
       this.reader = reader;
       console.log(`device attached`, reader.reader.name);
       reader.autoProcessing = false;
@@ -37,18 +55,25 @@ export default class NfcController extends EventEmitter {
           .reduce((prev: string, num: number) => num.toString(16) + prev, '');
         console.log(`card detected: ${fobNumber}`);
         this.webContents.send('card', fobNumber);
+
         if (!this.started) return;
+        this.webContents.send('initializing', true);
+
         try {
           let fob = await Fob.findOne({ where: { fobNumber } });
           if (fob?.uploaded) {
             alert('error', 'The fob has been uploaded');
             return;
           }
+          if (fob?.initialized) {
+            alert('error', 'The fob has been initialized');
+            return;
+          }
 
           if (!fob) fob = await Fob.create({ fobNumber });
 
           await this.selectFob(fob);
-          await delay(200); // TODO find reset function if possible
+          await delay(150); // TODO find reset function if possible
 
           const secret = fob.secret && !fob.initialized ? fob.secret : null;
           let res = await this.doExternalAuthentication(fob, secret); // TODO test to check all error
@@ -69,6 +94,7 @@ export default class NfcController extends EventEmitter {
               return;
             }
             await this.addSecret(fob);
+            // TODO upload
           } else if (res !== '9000') {
             alert(
               'error',
@@ -96,6 +122,8 @@ export default class NfcController extends EventEmitter {
             return;
           }
           alert('error', JSON.stringify(err));
+        } finally {
+          this.webContents.send('initializing', false);
         }
       });
 
@@ -115,6 +143,10 @@ export default class NfcController extends EventEmitter {
 
       reader.on('end', () => {
         console.log(`device removed`, reader.reader.name);
+        this.reader.removeAllListeners();
+        this.reader = null;
+        this.started = false;
+        this.webContents.send('interrupt');
       });
     });
 
@@ -128,33 +160,26 @@ export default class NfcController extends EventEmitter {
   };
 
   doExternalAuthentication = async (fob: Fob, secret: string | null) => {
-    let res = await this.transmit(
-      fob,
-      'Get random numbers',
-      '008400000400000000'
-    );
     const encryption = new Encryption(secret || 'FFFFFFFFFFFFFFFF');
-    let randomStr = res.slice(0, 8);
-    let encrypted = encryption.encrypt(`${randomStr}00000000`);
-    res = await this.transmit(
-      fob,
-      'External Authentication',
-      `0082000008${encrypted}`
-    );
-    if (res === '6984') {
+    let times = 2;
+    let res: string;
+    do {
+      // eslint-disable-next-line no-await-in-loop
       res = await this.transmit(
         fob,
         'Get random numbers',
         '008400000400000000'
       );
-      randomStr = res.slice(0, 8);
-      encrypted = encryption.encrypt(`${randomStr}00000000`);
-      return this.transmit(
+      const randomStr = res.slice(0, 8);
+      const encrypted = encryption.encrypt(`${randomStr}00000000`);
+      // eslint-disable-next-line no-await-in-loop
+      res = await this.transmit(
         fob,
         'External Authentication',
         `0082000008${encrypted}`
       );
-    }
+      times -= 1;
+    } while (times > 0 && res === '6984');
     return res;
   };
 
@@ -171,14 +196,6 @@ export default class NfcController extends EventEmitter {
     await fob.update({ secret });
     await this.transmit(fob, 'Add secret', `80D401000D39F0F1AAFF${secret}`);
     await fob.update({ initialized: true });
-  };
-
-  start = () => {
-    this.started = true;
-  };
-
-  stop = () => {
-    this.started = false;
   };
 
   transmit = async (fob: Fob, state: string, req: string) => {
@@ -209,7 +226,7 @@ export default class NfcController extends EventEmitter {
     if (direction === 'req') {
       await fob.update({ state: `${state}...` });
     } else {
-      await fob.update({ state: `${state} - ${cmd.slice(-4)}` });
+      await fob.update({ state: `${state} - ${cmd.slice(-4) || '""'}` });
     }
     this.webContents.send('log', fob.toJSON(), direction);
   };

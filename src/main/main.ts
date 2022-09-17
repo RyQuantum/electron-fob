@@ -15,7 +15,7 @@ import log from 'electron-log';
 import MenuBuilder from './menu';
 import * as db from './db';
 import { resolveHtmlPath } from './util';
-import NfcController from './nfcController';
+import NfcController from './NfcController';
 
 class AppUpdater {
   constructor() {
@@ -84,6 +84,8 @@ const createWindow = async () => {
     },
   });
 
+  mainWindow.setMenuBarVisibility(false);
+
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 
   const nfcController = new NfcController(mainWindow.webContents);
@@ -99,8 +101,6 @@ const createWindow = async () => {
     }
     nfcController.initNfc();
   });
-  ipcMain.on('start', nfcController.start);
-  ipcMain.on('stop', nfcController.stop);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
