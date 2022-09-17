@@ -90,7 +90,7 @@ const createWindow = async () => {
 
   const nfcController = new NfcController(mainWindow.webContents);
 
-  mainWindow.on('ready-to-show', () => {
+  mainWindow.on('ready-to-show', async () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
@@ -100,6 +100,8 @@ const createWindow = async () => {
       mainWindow.show();
     }
     nfcController.initNfc();
+    const fobs = await db.load();
+    mainWindow.webContents.send('fobs', fobs);
   });
 
   mainWindow.on('closed', () => {

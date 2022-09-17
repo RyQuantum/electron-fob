@@ -66,3 +66,13 @@ export const setup = async () => {
     console.error('Unable to connect to the database:', error);
   }
 };
+
+export const load = async (): Promise<Fob[]> => {
+  try {
+    const fobs = await Fob.findAll({ raw: true });
+    return fobs;
+  } catch (err) {
+    console.error('Unable to connect to the database:', err);
+    return [];
+  }
+};

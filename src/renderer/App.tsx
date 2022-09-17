@@ -50,8 +50,21 @@ type DataType = {
 };
 
 const FobTable: React.FC = () => {
+  const [current, setCurrent] = useState(1);
+
   const [dataSource, setDataSource] = useState<DataType[]>([]);
-  const handleEvent = useCallback((fob: Fob) => {
+  const handleFobsEvent = useCallback((fobs: Fob[]) => {
+    const data = fobs.map((fob) => ({
+      ...fob,
+      key: fob.id,
+      fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
+    }));
+    setDataSource(data);
+    setCurrent(Math.ceil(data.length / 10));
+  }, []);
+  useEvent('fobs', handleFobsEvent, ipcRenderer);
+
+  const handleFobEvent = useCallback((fob: Fob) => {
     setDataSource((prevDataSource) => {
       const index = prevDataSource.findIndex((f) => f.id === fob.id);
       const obj = {
@@ -64,14 +77,28 @@ const FobTable: React.FC = () => {
       } else {
         prevDataSource[index] = obj;
       }
+      setCurrent(Math.ceil(prevDataSource.length / 10));
       return [...prevDataSource];
     });
   }, []);
-  useEvent('log', handleEvent, ipcRenderer);
+  useEvent('fob', handleFobEvent, ipcRenderer);
 
   return (
     <div id="table">
-      <Table bordered dataSource={dataSource} columns={columns} />
+      <Table
+        bordered
+        dataSource={dataSource}
+        columns={columns}
+        pagination={{
+          current,
+          showQuickJumper: true,
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`,
+        }}
+        onChange={(config) =>
+          setCurrent(config.current || Math.ceil(dataSource.length / 10))
+        }
+      />
     </div>
   );
 };
@@ -132,7 +159,7 @@ const FobLogs: React.FC = () => {
       return [...prevLogs, fob.state];
     });
   }, []);
-  useEvent('log', handleUsbEvent, ipcRenderer);
+  useEvent('fob', handleUsbEvent, ipcRenderer);
 
   const [isRunning, setIsRunning] = useState(0); // 0: stopped; 1: running
   const handleInterruptEvent = useCallback(() => setIsRunning(0), []);

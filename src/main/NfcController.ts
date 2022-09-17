@@ -1,4 +1,4 @@
-import { WebContents, ipcMain, IpcMainEvent } from 'electron';
+import { WebContents, ipcMain, IpcMainEvent, dialog } from 'electron';
 import { NFC, Reader } from 'nfc-pcsc';
 import EventEmitter from 'events';
 
@@ -231,6 +231,6 @@ export default class NfcController extends EventEmitter {
     } else {
       await fob.update({ state: `${state} - ${cmd.slice(-4) || '""'}` });
     }
-    this.webContents.send('log', fob.toJSON(), direction);
+    this.webContents.send('fob', fob.toJSON(), direction);
   };
 }
