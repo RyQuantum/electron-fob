@@ -198,6 +198,7 @@ const FobLogs: React.FC = () => {
                   type="primary"
                   style={{ width: 60 }}
                   onClick={() => {
+                    // TODO fix conflict of 2 buttons
                     if (isRunning) {
                       ipcRenderer.sendMessage('stop', []);
                       setIsRunning(0);

@@ -54,7 +54,7 @@ interface IState {
 
 class TableComponent extends Component<IProps, IState> {
   constructor(props: IProps) {
-    super(props);
+    super(props); // TODO fix error
     this.state = {
       selectedRowKeys: [],
       current: 1,
@@ -66,8 +66,7 @@ class TableComponent extends Component<IProps, IState> {
         key: fob.id,
         fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
       }));
-      this.setState({ dataSource });
-      this.setState({ current: Math.ceil(dataSource.length / 10) });
+      this.setState({ dataSource, current: Math.ceil(dataSource.length / 10) });
     });
     ipcRenderer.on('fob', (fob: Fob) => {
       this.setState((prevState) => {
@@ -92,24 +91,31 @@ class TableComponent extends Component<IProps, IState> {
         state: { dataSource },
       } = this;
       if (isVerifying) {
-        if (card === '') return this.setState({ selectedRowKeys: [] });
-        const fobIndex = dataSource.findIndex(
+        if (card === '') {
+          this.setState({ selectedRowKeys: [] });
+          return;
+        }
+        const index = dataSource.findIndex(
           (fob: DataType) =>
             fob.fobNumber === parseInt(card, 16).toString().padStart(10, '0')
         );
-        if (fobIndex === -1) {
+        if (index === -1) {
           ipcRenderer.sendMessage('alert', [
             'error',
             `The fob hasn't been initialized`,
           ]);
         } else {
+          if (dataSource[index].state !== 'Add secret - 9000')
+            ipcRenderer.sendMessage('alert', [
+              'error',
+              `The fob wasn't initialized correctly. Please initialize it again.`,
+            ]);
           this.setState({
-            current: Math.floor(fobIndex / 10) + 1,
-            selectedRowKeys: [dataSource[fobIndex].id],
+            current: Math.floor(index / 10) + 1,
+            selectedRowKeys: [dataSource[index].id],
           });
         }
       }
-      return 0;
     });
   }
 
