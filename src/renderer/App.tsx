@@ -1,7 +1,13 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { Button, Table, List, Radio, Badge, Checkbox } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, {
+  useCallback,
+  useState,
+  useRef,
+  useEffect,
+  useContext,
+} from 'react';
 import { useEvent } from 'react-use';
 
 import 'antd/dist/antd.css';
@@ -10,6 +16,13 @@ import { Fob } from '../main/db';
 import nfc from '../../assets/nfc.gif';
 
 const { ipcRenderer } = window.electron;
+
+interface IsVerifyingProps {
+  isVerifying: boolean;
+  setIsVerifying: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const VerifyContext = React.createContext({} as IsVerifyingProps);
 
 const columns = [
   {
@@ -50,6 +63,9 @@ type DataType = {
 };
 
 const FobTable: React.FC = () => {
+  const { isVerifying } = useContext(VerifyContext);
+
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [current, setCurrent] = useState(1);
 
   const [dataSource, setDataSource] = useState<DataType[]>([]);
@@ -98,6 +114,7 @@ const FobTable: React.FC = () => {
         onChange={(config) =>
           setCurrent(config.current || Math.ceil(dataSource.length / 10))
         }
+        rowSelection={{ type: 'radio', selectedRowKeys }}
       />
     </div>
   );
@@ -131,9 +148,11 @@ const FobTable: React.FC = () => {
 // }
 
 const FobLogs: React.FC = () => {
+  const { isVerifying, setIsVerifying } = useContext(VerifyContext);
+
   const [fobNumber, setFobNumber] = useState('');
-  const handleConnectEvent = useCallback((num: string) => {
-    const fobNum = num && parseInt(num, 16).toString().padStart(10, '0');
+  const handleConnectEvent = useCallback((num: [string, number]) => {
+    const fobNum = num[0] && parseInt(num[0], 16).toString().padStart(10, '0');
     setFobNumber(fobNum);
   }, []);
   useEvent('card', handleConnectEvent, ipcRenderer);
@@ -174,39 +193,58 @@ const FobLogs: React.FC = () => {
         size="small"
         header={
           <div id="header">
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Radio checked={fobNumber !== ''}>
-                Fob {fobNumber !== '' ? `: ${fobNumber}` : ' not detected'}
-              </Radio>
-              {isInitializing && (
-                <LoadingOutlined style={{ fontSize: '16px' }} />
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              {
-                [null, <img src={nfc} alt="nfc" style={{ height: 22 }} />][
-                  isRunning
-                ]
-              }
-              NFC &nbsp;
+            <div>
               <Button
                 className="button"
                 type="primary"
-                style={{ width: 60 }}
-                onClick={() => {
-                  if (isRunning) {
-                    ipcRenderer.sendMessage('stop', []);
-                    setIsRunning(0);
-                  } else {
-                    ipcRenderer.once('start', (arg: number) =>
-                      setIsRunning(arg)
-                    );
-                    ipcRenderer.sendMessage('start', [fobNumber]);
-                  }
-                }}
+                onClick={() => setIsVerifying(!isVerifying)}
               >
-                {isRunning ? ' Stop ' : 'Start'}
+                Verify
               </Button>
+              {isVerifying && (
+                <LoadingOutlined style={{ fontSize: '16px', marginLeft: 5 }} />
+              )}
+            </div>
+            <div style={{ display: 'flex' }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                {isInitializing ? (
+                  <LoadingOutlined
+                    style={{ fontSize: '16px', marginRight: 5 }}
+                  />
+                ) : (
+                  <div style={{ width: '1em' }} />
+                )}
+                <Radio checked={fobNumber !== ''}>
+                  Fob{fobNumber !== '' ? `: ${fobNumber}` : ' not detected'}
+                </Radio>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                {
+                  [
+                    <div style={{ width: 20 }} />,
+                    <img src={nfc} alt="nfc" style={{ width: 20 }} />,
+                  ][isRunning]
+                }
+                NFC &nbsp;
+                <Button
+                  className="button"
+                  type="primary"
+                  style={{ width: 60 }}
+                  onClick={() => {
+                    if (isRunning) {
+                      ipcRenderer.sendMessage('stop', []);
+                      setIsRunning(0);
+                    } else {
+                      ipcRenderer.once('start', (arg: number) =>
+                        setIsRunning(arg)
+                      );
+                      ipcRenderer.sendMessage('start', [fobNumber]);
+                    }
+                  }}
+                >
+                  {isRunning ? ' Stop ' : 'Start'}
+                </Button>
+              </div>
             </div>
           </div>
         }
@@ -228,10 +266,13 @@ const FobLogs: React.FC = () => {
 };
 
 const Content: React.FC = () => {
+  const [isVerifying, setIsVerifying] = useState(false);
   return (
     <div id="content">
-      <FobTable />
-      <FobLogs />
+      <VerifyContext.Provider value={{ isVerifying, setIsVerifying }}>
+        <FobTable />
+        <FobLogs />
+      </VerifyContext.Provider>
     </div>
   );
 };
