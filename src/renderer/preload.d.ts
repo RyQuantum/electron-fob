@@ -7,6 +7,8 @@ declare global {
       ipcRenderer: {
         sendMessage(channel: Channels, args: unknown[]): void;
         on(channel: 'fobs', func: (arg: Fob[]) => void): void;
+        on(channel: 'fob', func: (arg: Fob) => void): void;
+        on(channel: 'card', func: (arg: string) => void): void;
         on(
           channel: string,
           func: (...args: unknown[]) => void

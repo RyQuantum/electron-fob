@@ -21,6 +21,7 @@ export default class NfcController extends EventEmitter {
     this.webContents = webContents;
     ipcMain.on('start', this.start);
     ipcMain.on('stop', this.stop);
+    ipcMain.on('alert', this.alert);
   }
 
   start = (event: IpcMainEvent, args: [string]) => {
@@ -41,6 +42,10 @@ export default class NfcController extends EventEmitter {
 
   stop = () => {
     this.running = false;
+  };
+
+  alert = (_event: IpcMainEvent, args: [string, string]) => {
+    alert(args[0], args[1]);
   };
 
   initNfc = () => {
