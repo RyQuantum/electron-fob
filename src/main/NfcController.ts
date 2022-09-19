@@ -1,9 +1,10 @@
-import { WebContents, ipcMain, IpcMainEvent, dialog } from 'electron';
+import { WebContents, ipcMain, IpcMainEvent } from 'electron';
 import { NFC, Reader } from 'nfc-pcsc';
 import EventEmitter from 'events';
 
+import * as api from './api';
 import Encryption from './Encryption';
-import { alert, delay } from './util';
+import { alert, alertUploadFailed, delay } from './util';
 import { Fob } from './db';
 import ResponseError from './ResponseError';
 
@@ -101,7 +102,7 @@ export default class NfcController extends EventEmitter {
               return;
             }
             await this.addSecret(fob);
-            // TODO upload
+            this.upload(fob);
           } else if (res !== '9000') {
             alert(
               'error',
@@ -118,7 +119,7 @@ export default class NfcController extends EventEmitter {
               return;
             }
             await this.addSecret(fob);
-            // TODO upload
+            this.upload(fob);
           }
         } catch (err) {
           if (err instanceof ResponseError) {
@@ -237,5 +238,21 @@ export default class NfcController extends EventEmitter {
       await fob.update({ state: `${state} - ${cmd.slice(-4) || '""'}` });
     }
     this.webContents.send('fob', fob.toJSON(), direction);
+  };
+
+  upload = async (fob: Fob) => {
+    let resp = { response: 1 };
+    do {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await api.upload(fob.fobNumber, fob.secret);
+      if (!res.success)
+        // eslint-disable-next-line no-await-in-loop
+        resp = await alertUploadFailed(res.message, fob.fobNumber);
+      else {
+        // eslint-disable-next-line no-await-in-loop
+        await fob.update({ uploaded: true });
+        this.webContents.send('fob', fob.toJSON(), 'upload');
+      }
+    } while (resp.response !== 1);
   };
 }

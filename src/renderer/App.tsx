@@ -1,5 +1,5 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import { Button, List, Radio } from 'antd';
+import { Button, Form, List, Modal, Radio, Input } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import React, {
   useCallback,
@@ -130,21 +130,25 @@ const FobLogs: React.FC = () => {
   }, []);
   useEvent('initializing', handleRunningEvent, ipcRenderer);
 
-  const ref = useRef({ fobNumber: '' });
+  const ref = useRef({ fobNumber: '' }); // TODO research any better way than ref
   const [logs, setLogs] = useState<string[]>([]);
-  const handleUsbEvent = useCallback((fob: Fob, direction: 'req' | 'res') => {
-    setLogs((prevLogs: string[]) => {
-      if (fob.fobNumber !== ref.current.fobNumber) {
-        ref.current.fobNumber = fob.fobNumber;
-        return [fob.state];
-      }
-      if (direction === 'res') {
-        prevLogs[prevLogs.length - 1] = `${fob.state}`;
-        return [...prevLogs];
-      }
-      return [...prevLogs, fob.state];
-    });
-  }, []);
+  const handleUsbEvent = useCallback(
+    (fob: Fob, direction: 'req' | 'res' | 'upload') => {
+      setLogs((prevLogs: string[]) => {
+        if (fob.fobNumber !== ref.current.fobNumber) {
+          ref.current.fobNumber = fob.fobNumber;
+          return [fob.state];
+        }
+        if (direction === 'upload') return [...prevLogs, 'Uploaded'];
+        if (direction === 'res') {
+          prevLogs[prevLogs.length - 1] = `${fob.state}`;
+          return [...prevLogs];
+        }
+        return [...prevLogs, fob.state];
+      });
+    },
+    []
+  );
   useEvent('fob', handleUsbEvent, ipcRenderer);
 
   const [isRunning, setIsRunning] = useState(0); // 0: stopped; 1: running
@@ -235,8 +239,74 @@ const FobLogs: React.FC = () => {
 
 const Content: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(true);
+
+  const onFinishSuccess = ({
+    username,
+    password,
+    env,
+  }: {
+    username: string;
+    password: string;
+    env: string;
+  }) => {
+    setLoading(true);
+    ipcRenderer.once('login', (res) => {
+      if (!res.success) Modal.error({ title: 'Error', content: res.message });
+      else setOpen(false);
+      setLoading(false);
+    });
+    ipcRenderer.sendMessage('login', [username, password, env]);
+  };
+
   return (
     <div id="content">
+      <Modal
+        title="Login"
+        open={open}
+        maskClosable={false}
+        closable={false}
+        footer={[]}
+      >
+        <Form
+          name="login"
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 16 }}
+          onFinish={onFinishSuccess}
+          autoComplete="off"
+          initialValues={{ env: 'Production' }}
+        >
+          <Form.Item
+            label="Username"
+            name="username"
+            rules={[{ required: true, message: 'Please input your username!' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            label="Password"
+            name="password"
+            rules={[{ required: true, message: 'Please input your password!' }]}
+          >
+            <Input.Password />
+          </Form.Item>
+
+          <Form.Item label="Environment" name="env">
+            <Radio.Group>
+              <Radio value="Production">Production</Radio>
+              <Radio value="OSS">OSS</Radio>
+            </Radio.Group>
+          </Form.Item>
+
+          <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Login
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
       <VerifyContext.Provider value={{ isVerifying, setIsVerifying }}>
         <FobTable />
         <FobLogs />

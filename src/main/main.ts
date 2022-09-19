@@ -14,7 +14,12 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import * as db from './db';
-import { resolveHtmlPath } from './util';
+import * as api from './api';
+import {
+  alertExitWarning,
+  convertNumbersToDecimal,
+  resolveHtmlPath,
+} from './util';
 import NfcController from './NfcController';
 
 class AppUpdater {
@@ -104,6 +109,30 @@ const createWindow = async () => {
     mainWindow.webContents.send('fobs', fobs);
   });
 
+  mainWindow.on('close', async (e) => {
+    e.preventDefault();
+    const fobs = await db.Fob.findAll({ where: { uploaded: false } });
+    if (fobs.length === 0) {
+      app.quit();
+      return;
+    }
+
+    const fobNumbers = convertNumbersToDecimal(
+      fobs.map((fob) => fob.fobNumber)
+    ).join(', ');
+    const message = `There are some fobs haven't been uploaded:\n${fobNumbers}\nDo you want to upload them before exit?`;
+    let resp = await alertExitWarning(message);
+    while (resp.response === 0) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await api.uploadMany(fobs); //  TODO update tsconfig for all await
+      if (res.success) return;
+      // eslint-disable-next-line no-await-in-loop
+      resp = await alertExitWarning(
+        `Some of them uploaded failed:\n${res.message}\nDo you want to retry?`
+      );
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -120,6 +149,7 @@ const createWindow = async () => {
   // Remove this if your app does not use auto updates
   // eslint-disable-next-line
   new AppUpdater();
+  ipcMain.on('login', api.login);
 };
 
 /**
