@@ -30,8 +30,12 @@ export const login = async (
     accessToken = data.access_token;
     event.reply('login', { success: true });
   } catch (err) {
+    // TODO fix only show empty message for API
     const error = err as AxiosError;
-    event.reply('login', error.response?.data || error.message);
+    event.reply(
+      'login',
+      error.response?.data || { success: false, message: error.message }
+    );
   }
 };
 
@@ -58,11 +62,11 @@ export const upload = async (
 
 export const uploadMany = async (
   fobs: Fob[]
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; remain: number }> => {
   const promises = fobs.map((fob) => upload(fob.fobNumber, fob.secret));
   const results = await Promise.all(promises);
   if (results.every((result) => result.success))
-    return { success: true, message: 'All uploaded' };
+    return { success: true, message: 'All uploaded', remain: 0 };
   const list: number[] = [];
   results.forEach((result, i) => {
     if (!result.success) list.push(i);
@@ -75,5 +79,5 @@ export const uploadMany = async (
         }`
     )
     .join('\n');
-  return { success: false, message };
+  return { success: false, message, remain: list.length };
 };

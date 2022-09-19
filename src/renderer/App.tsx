@@ -1,5 +1,5 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import { Button, Form, List, Modal, Radio, Input } from 'antd';
+import { Button, Form, List, Modal, Radio, Input, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import React, {
   useCallback,
@@ -151,8 +151,8 @@ const FobLogs: React.FC = () => {
   );
   useEvent('fob', handleUsbEvent, ipcRenderer);
 
-  const [isRunning, setIsRunning] = useState(0); // 0: stopped; 1: running
-  const handleInterruptEvent = useCallback(() => setIsRunning(0), []);
+  const [isTesting, setIsTesting] = useState(false);
+  const handleInterruptEvent = useCallback(() => setIsTesting(false), []);
   useEvent('interrupt', handleInterruptEvent, ipcRenderer);
 
   const refs = useRef<HTMLElement[]>([]);
@@ -168,55 +168,61 @@ const FobLogs: React.FC = () => {
               <Button
                 className="button"
                 type="primary"
+                style={{ width: 65 }}
                 onClick={() => setIsVerifying(!isVerifying)}
+                disabled={isTesting}
               >
-                Verify
+                {isVerifying ? ' Stop ' : 'Verify'}
               </Button>
-              {isVerifying && (
-                <LoadingOutlined style={{ fontSize: '16px', marginLeft: 5 }} />
-              )}
+              <LoadingOutlined
+                style={{
+                  fontSize: '16px',
+                  marginLeft: 5,
+                  visibility: isVerifying ? 'visible' : 'hidden',
+                }}
+              />
             </div>
-            <div style={{ display: 'flex' }}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                {isInitializing ? (
-                  <LoadingOutlined
-                    style={{ fontSize: '16px', marginRight: 5 }}
-                  />
-                ) : (
-                  <div style={{ width: '1em' }} />
-                )}
-                <Radio checked={fobNumber !== ''}>
-                  Fob{fobNumber !== '' ? `: ${fobNumber}` : ' not detected'}
-                </Radio>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                {
-                  [
-                    <div style={{ width: 20 }} />,
-                    <img src={nfc} alt="nfc" style={{ width: 20 }} />,
-                  ][isRunning]
-                }
-                NFC &nbsp;
-                <Button
-                  className="button"
-                  type="primary"
-                  style={{ width: 60 }}
-                  onClick={() => {
-                    // TODO fix conflict of 2 buttons
-                    if (isRunning) {
-                      ipcRenderer.sendMessage('stop', []);
-                      setIsRunning(0);
-                    } else {
-                      ipcRenderer.once('start', (arg: number) =>
-                        setIsRunning(arg)
-                      );
-                      ipcRenderer.sendMessage('start', [fobNumber]);
-                    }
-                  }}
-                >
-                  {isRunning ? ' Stop ' : 'Start'}
-                </Button>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <LoadingOutlined
+                style={{
+                  fontSize: '16px',
+                  marginRight: 5,
+                  visibility: isInitializing ? 'visible' : 'hidden',
+                }}
+              />
+              <Radio checked={fobNumber !== ''}>
+                Fob{fobNumber !== '' ? `: ${fobNumber}` : ' not detected'}
+              </Radio>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <img
+                src={nfc}
+                alt="nfc"
+                style={{
+                  width: 20,
+                  visibility: isTesting ? 'visible' : 'hidden',
+                }}
+              />
+              NFC &nbsp;
+              <Button
+                className="button"
+                type="primary"
+                style={{ width: 65 }}
+                onClick={() => {
+                  if (isTesting) {
+                    ipcRenderer.sendMessage('stop', []);
+                    setIsTesting(false);
+                  } else {
+                    ipcRenderer.once('start', (arg: boolean) =>
+                      setIsTesting(arg)
+                    );
+                    ipcRenderer.sendMessage('start', [fobNumber]);
+                  }
+                }}
+                disabled={isVerifying}
+              >
+                {isTesting ? ' Stop ' : 'Init'}
+              </Button>
             </div>
           </div>
         }
@@ -238,9 +244,16 @@ const FobLogs: React.FC = () => {
 };
 
 const Content: React.FC = () => {
+  const [isUploading, setisUploading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(true);
+
+  const handleEvent = useCallback(
+    (enabled: boolean) => setisUploading(enabled),
+    []
+  );
+  useEvent('uploadAll', handleEvent, ipcRenderer);
 
   const onFinishSuccess = ({
     username,
@@ -261,57 +274,63 @@ const Content: React.FC = () => {
   };
 
   return (
-    <div id="content">
-      <Modal
-        title="Login"
-        open={open}
-        maskClosable={false}
-        closable={false}
-        footer={[]}
-      >
-        <Form
-          name="login"
-          labelCol={{ span: 8 }}
-          wrapperCol={{ span: 16 }}
-          onFinish={onFinishSuccess}
-          autoComplete="off"
-          initialValues={{ env: 'Production' }}
+    <Spin spinning={isUploading} tip="Uploading..." size="large">
+      <div id="content">
+        <Modal
+          title="Login"
+          open={open}
+          maskClosable={false}
+          closable={false}
+          footer={[]}
         >
-          <Form.Item
-            label="Username"
-            name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
+          <Form
+            name="login"
+            labelCol={{ span: 8 }}
+            wrapperCol={{ span: 16 }}
+            onFinish={onFinishSuccess}
+            autoComplete="off"
+            initialValues={{ env: 'Production' }}
           >
-            <Input />
-          </Form.Item>
+            <Form.Item
+              label="Username"
+              name="username"
+              rules={[
+                { required: true, message: 'Please input your username!' },
+              ]}
+            >
+              <Input />
+            </Form.Item>
 
-          <Form.Item
-            label="Password"
-            name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
-          >
-            <Input.Password />
-          </Form.Item>
+            <Form.Item
+              label="Password"
+              name="password"
+              rules={[
+                { required: true, message: 'Please input your password!' },
+              ]}
+            >
+              <Input.Password />
+            </Form.Item>
 
-          <Form.Item label="Environment" name="env">
-            <Radio.Group>
-              <Radio value="Production">Production</Radio>
-              <Radio value="OSS">OSS</Radio>
-            </Radio.Group>
-          </Form.Item>
+            <Form.Item label="Environment" name="env">
+              <Radio.Group>
+                <Radio value="Production">Production</Radio>
+                <Radio value="OSS">OSS</Radio>
+              </Radio.Group>
+            </Form.Item>
 
-          <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              Login
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
-      <VerifyContext.Provider value={{ isVerifying, setIsVerifying }}>
-        <FobTable />
-        <FobLogs />
-      </VerifyContext.Provider>
-    </div>
+            <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                Login
+              </Button>
+            </Form.Item>
+          </Form>
+        </Modal>
+        <VerifyContext.Provider value={{ isVerifying, setIsVerifying }}>
+          <FobTable />
+          <FobLogs />
+        </VerifyContext.Provider>
+      </div>
+    </Spin>
   );
 };
 

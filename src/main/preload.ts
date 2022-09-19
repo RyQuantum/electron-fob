@@ -4,9 +4,10 @@ export type Channels =
   | 'ipc-example'
   | 'start'
   | 'stop'
-  | 'alert'
+  | 'alert' // TODO what is this?
   | 'login'
-  | 'upload';
+  | 'upload'
+  | 'uploadAll';
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {

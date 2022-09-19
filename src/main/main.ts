@@ -79,7 +79,9 @@ const createWindow = async () => {
   mainWindow = new BrowserWindow({
     show: false,
     width: 1024,
+    minWidth: 1000,
     height: 728,
+    minHeight: 680,
     icon: getAssetPath('icon.png'),
     webPreferences: {
       sandbox: false,
@@ -113,24 +115,38 @@ const createWindow = async () => {
     e.preventDefault();
     const fobs = await db.Fob.findAll({ where: { uploaded: false } });
     if (fobs.length === 0) {
-      app.quit();
+      mainWindow!.hide();
+      await db.upload(0);
+      app.exit();
       return;
     }
-
+    // TODO if the user clicks the exit button before login, it would be impossible to upload
     const fobNumbers = convertNumbersToDecimal(
       fobs.map((fob) => fob.fobNumber)
     ).join(', ');
     const message = `There are some fobs haven't been uploaded:\n${fobNumbers}\nDo you want to upload them before exit?`;
     let resp = await alertExitWarning(message);
+    let res = { remain: -1, success: false, message: '' };
     while (resp.response === 0) {
+      mainWindow!.webContents.send('uploadAll', true);
       // eslint-disable-next-line no-await-in-loop
-      const res = await api.uploadMany(fobs); //  TODO update tsconfig for all await
-      if (res.success) return;
+      res = await api.uploadMany(fobs); //  TODO update tsconfig for all await
+      mainWindow!.webContents.send('uploadAll', false);
+      if (res.success) {
+        mainWindow!.hide();
+        // eslint-disable-next-line no-await-in-loop
+        await db.upload(res.remain);
+        app.exit();
+        return;
+      }
       // eslint-disable-next-line no-await-in-loop
       resp = await alertExitWarning(
         `Some of them uploaded failed:\n${res.message}\nDo you want to retry?`
       );
-    }
+    } // TODO test if exit or not as expected in success or failed cases
+    mainWindow!.hide();
+    await db.upload(res.remain === -1 ? fobs.length : res.remain);
+    app.exit();
   });
 
   mainWindow.on('closed', () => {

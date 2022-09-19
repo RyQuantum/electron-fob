@@ -29,16 +29,16 @@ export default class NfcController extends EventEmitter {
     const [fobNumber] = args;
     if (fobNumber !== '') {
       alert('error', 'Please remove the fob from the reader, then start.');
-      event.reply('start', 0);
+      event.reply('start', false);
       return;
     }
     if (!this.reader) {
       alert('error', 'No NFC reader is found');
-      event.reply('start', 0);
+      event.reply('start', false);
       return;
     }
     this.running = true;
-    event.reply('start', 1);
+    event.reply('start', true);
   };
 
   stop = () => {
@@ -201,9 +201,11 @@ export default class NfcController extends EventEmitter {
   };
 
   addSecret = async (fob: Fob) => {
-    const secret = 'FFFFFFFFFFFFFFFF'; // TODO update to random 3DES key
+    const secret = 'FFFFFFFFFFFFFFFF';
+    // const secret = crypto.randomBytes(16).toString('hex').toUpperCase(); TODO update it before release
     await fob.update({ secret });
     await this.transmit(fob, 'Add secret', `80D401000D39F0F1AAFF${secret}`);
+    // await this.transmit(fob, 'Add secret', `80D401001539F0F1AAFF${secret}`);
     await fob.update({ initialized: true });
   };
 

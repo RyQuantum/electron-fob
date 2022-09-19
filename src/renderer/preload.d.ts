@@ -21,7 +21,7 @@ declare global {
           channel: 'upload',
           func: (res: { success: boolean; message: string }) => void
         ): void;
-        once(channel: 'start', func: (arg: number) => void): void;
+        once(channel: 'start', func: (arg: boolean) => void): void;
         once(channel: string, func: (...args: unknown[]) => void): void;
       };
     };

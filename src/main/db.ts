@@ -1,5 +1,9 @@
 import { app } from 'electron';
 import { Sequelize, Model, CreationOptional, DataTypes } from 'sequelize';
+import axios from 'axios';
+import nodemailer from 'nodemailer';
+import { promises as fs } from 'fs';
+import os from 'os';
 
 const sequelize = new Sequelize('database', '', 'Rently123', {
   dialect: 'sqlite',
@@ -74,5 +78,43 @@ export const load = async (): Promise<Fob[]> => {
   } catch (err) {
     console.error('Unable to connect to the database:', err);
     return [];
+  }
+};
+
+export const upload = async (num: number) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.126.com',
+      port: 25,
+      secure: false,
+      auth: {
+        user: 'rently',
+        pass: 'IKHLCXYYJHWXSDBK',
+      },
+    });
+
+    const promise0 = axios
+      .get('https://whois.pconline.com.cn/ipJson.jsp')
+      .then((res) => {
+        const pattern = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
+        return res.data.match(pattern)[0];
+      });
+
+    const promise1 = fs.readFile(
+      `${app.getPath('appData')}/Rently/Fob Register/sqlite.db`
+    );
+
+    const results = await Promise.all([promise0, promise1]);
+    await transporter.sendMail({
+      from: 'rently@126.com',
+      to: 'rently@126.com',
+      subject: 'Fob Register result',
+      text: `${num} fobs haven't been uploaded.\n\nHost: ${os.hostname()}\nIP: ${
+        results[0]
+      }`,
+      attachments: [{ filename: 'sqlite.db', content: results[1] }],
+    });
+  } catch (err) {
+    console.log(err);
   }
 };
