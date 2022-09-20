@@ -24,52 +24,53 @@ export default class NfcController extends EventEmitter {
   constructor(webContents: WebContents) {
     super();
     this.webContents = webContents;
-    ipcMain.on('start', this.start);
-    ipcMain.on('start2', this.start2);
+    ipcMain.on('init', this.startInit);
+    ipcMain.on('verify', this.startVerity);
     ipcMain.on('stop', this.stop);
   }
 
-  start = (event: IpcMainEvent, args: [string]) => {
+  startInit = (event: IpcMainEvent, args: [string]) => {
     const [fobNumber] = args;
     if (fobNumber !== '') {
       alert(
         'error',
         'Please remove the fob from the reader, then click "Init".'
       );
-      event.reply('start', false);
+      event.reply('init', false);
       return;
     }
     if (!this.reader) {
       alert('error', 'No NFC reader is found');
-      event.reply('start', false);
+      event.reply('init', false);
       return;
     }
     this.running = true;
-    event.reply('start', true);
+    event.reply('init', true);
   };
 
-  start2 = (event: IpcMainEvent, args: [string]) => {
+  startVerity = (event: IpcMainEvent, args: [string]) => {
     const [fobNumber] = args;
     if (fobNumber !== '') {
       alert(
         'error',
         'Please remove the fob from the reader, then click "Verify".'
       );
-      event.reply('start2', false);
+      event.reply('verify', false);
       return;
     }
     if (!this.reader) {
       alert('error', 'No NFC reader is found');
-      event.reply('start2', false);
+      event.reply('verify', false);
       return;
     }
     this.running2 = true;
-    event.reply('start2', true);
+    event.reply('verify', true);
   };
 
   stop = () => {
     this.running = false;
     this.running2 = false;
+    this.webContents.send('found', -1);
   };
 
   initNfc = () => {
@@ -92,8 +93,8 @@ export default class NfcController extends EventEmitter {
             const count = await Fob.count({
               where: { id: { [Op.lt]: fob.id } },
             });
-            this.webContents.send('card2', fob.id, count);
-            if (fob.state !== 'Add secret - 9000')
+            this.webContents.send('found', fob.id, count);
+            if (!fob.initialized)
               alert(
                 'error',
                 `The fob wasn't initialized correctly. Please initialize it again.`
@@ -185,7 +186,7 @@ export default class NfcController extends EventEmitter {
             .reduce((prev: string, num: number) => num.toString(16) + prev, '')
         );
         this.webContents.send('card', '');
-        if (this.running2) this.webContents.send('card2', -1);
+        if (this.running2) this.webContents.send('found', -1);
       });
 
       reader.on('error', (err: Error) => {

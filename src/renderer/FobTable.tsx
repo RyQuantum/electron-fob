@@ -1,5 +1,6 @@
-import React, { Component, useContext } from 'react';
 import { Badge, Checkbox, Table } from 'antd';
+import React, { useCallback, useState } from 'react';
+import { useEvent } from 'react-use';
 import { Fob } from '../main/db';
 
 const { ipcRenderer } = window.electron;
@@ -42,122 +43,73 @@ type DataType = {
   uploaded: boolean;
 };
 
-interface IProps {
-  isVerifying: boolean;
-}
+const FobTable: React.FC = () => {
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
+  const [current, setCurrent] = useState(1);
 
-interface IState {
-  selectedRowKeys: number[];
-  current: number;
-  dataSource: DataType[];
-}
+  const [dataSource, setDataSource] = useState<DataType[]>([]);
+  const handleFobsEvent = useCallback((fobs: Fob[]) => {
+    const data = fobs.map((fob) => ({
+      ...fob,
+      key: fob.id,
+      fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
+    }));
+    setDataSource(data);
+    setCurrent(Math.ceil(data.length / 10));
+  }, []);
+  useEvent('fobs', handleFobsEvent, ipcRenderer);
 
-class TableComponent extends Component<IProps, IState> {
-  constructor(props: IProps) {
-    super(props); // TODO fix error
-    this.state = {
-      selectedRowKeys: [],
-      current: 1,
-      dataSource: [],
-    };
-    ipcRenderer.on('fobs', (fobs: Fob[]) => {
-      const dataSource = fobs.map((fob) => ({
+  const handleFobEvent = useCallback((fob: Fob, direction: string | number) => {
+    setDataSource((prevDataSource) => {
+      const index = prevDataSource.findIndex((f) => f.id === fob.id);
+      const obj = {
         ...fob,
         key: fob.id,
         fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
-      }));
-      this.setState({ dataSource, current: Math.ceil(dataSource.length / 10) });
-    });
-    ipcRenderer.on('fob', (fob: Fob) => {
-      this.setState((prevState) => {
-        const index = prevState.dataSource.findIndex((f) => f.id === fob.id);
-        const obj = {
-          ...fob,
-          key: fob.id,
-          fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
-        };
-        if (index === -1) {
-          prevState.dataSource.push(obj);
-        } else {
-          prevState.dataSource[index] = obj;
-        }
-        this.setState({ current: Math.ceil(prevState.dataSource.length / 10) });
-        return { dataSource: [...prevState.dataSource] };
-      });
-    });
-    ipcRenderer.on('card', (card: string) => {
-      const {
-        props: { isVerifying },
-        state: { dataSource },
-      } = this;
-      if (isVerifying) {
-        if (card === '') {
-          this.setState({ selectedRowKeys: [] });
-          return;
-        }
-        const index = dataSource.findIndex(
-          (fob: DataType) =>
-            fob.fobNumber === parseInt(card, 16).toString().padStart(10, '0')
-        );
-        if (index === -1) {
-          ipcRenderer.sendMessage('alert', [
-            'error',
-            `The fob hasn't been initialized`,
-          ]);
-        } else {
-          if (dataSource[index].state !== 'Add secret - 9000')
-            ipcRenderer.sendMessage('alert', [
-              'error',
-              `The fob wasn't initialized correctly. Please initialize it again.`,
-            ]);
-          this.setState({
-            current: Math.floor(index / 10) + 1,
-            selectedRowKeys: [dataSource[index].id],
-          });
-        }
+      };
+      if (index === -1) {
+        prevDataSource.push(obj);
+      } else {
+        prevDataSource[index] = obj;
       }
+      if (typeof direction === 'number')
+        setCurrent(Math.floor(direction / 10) + 1);
+      else setCurrent(Math.ceil(prevDataSource.length / 10));
+      return [...prevDataSource];
     });
-  }
+  }, []);
+  useEvent('fob', handleFobEvent, ipcRenderer);
 
-  render() {
-    const { selectedRowKeys, current, dataSource } = this.state;
-    const { isVerifying } = this.props;
+  const handleCardEvent = useCallback((fobId: number, sequence: number) => {
+    if (fobId === -1) {
+      setSelectedRowKeys([]);
+      return;
+    }
+    setSelectedRowKeys([fobId]);
+    setCurrent(Math.floor(sequence / 10) + 1);
+  }, []);
+  useEvent('found', handleCardEvent, ipcRenderer);
 
-    return (
-      <div id="table">
-        <Table
-          bordered
-          dataSource={dataSource}
-          columns={columns}
-          pagination={{
-            current,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} items`,
-          }}
-          onChange={(config) =>
-            this.setState({
-              current: config.current || Math.ceil(dataSource.length / 10),
-            })
-          }
-          rowSelection={{
-            type: 'radio',
-            selectedRowKeys: isVerifying ? selectedRowKeys : [],
-          }}
-        />
-      </div>
-    );
-  }
-}
+  return (
+    <div id="table">
+      <Table
+        bordered
+        size="middle"
+        dataSource={dataSource}
+        columns={columns}
+        pagination={{
+          current,
+          showQuickJumper: true,
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`,
+        }}
+        onChange={(config) =>
+          setCurrent(config.current || Math.ceil(dataSource.length / 10))
+        }
+        rowSelection={{ type: 'radio', selectedRowKeys }}
+      />
+    </div>
+  );
+};
 
-interface IsVerifyingProps {
-  isVerifying: boolean;
-  setIsVerifying: React.Dispatch<React.SetStateAction<boolean>>;
-}
-export const VerifyContext = React.createContext({} as IsVerifyingProps);
-
-export default function FobTable() {
-  // TODO remove this middleware
-  const { isVerifying } = useContext(VerifyContext);
-  return <TableComponent isVerifying={isVerifying} />;
-}
+export default FobTable;
