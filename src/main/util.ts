@@ -61,7 +61,7 @@ export async function alertUploadFailed(
   );
 }
 
-export async function alertExitWarning(
+export async function alertWarning(
   message: string
 ): Promise<{ response: number }> {
   return dialog.showMessageBox(

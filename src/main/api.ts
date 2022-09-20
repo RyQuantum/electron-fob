@@ -30,26 +30,35 @@ export const login = async (
     accessToken = data.access_token;
     event.reply('login', { success: true });
   } catch (err) {
-    // TODO fix only show empty message for API
     const error = err as AxiosError;
-    event.reply(
-      'login',
-      error.response?.data || { success: false, message: error.message }
-    );
+    let res;
+    if (error.response?.data) {
+      res = error.response.data;
+    } else if (error.response?.status && error.response?.statusText) {
+      res = {
+        success: false,
+        message: `${error.response.status} ${error.response.statusText}`,
+      };
+    } else {
+      res = {
+        success: false,
+        message: error.message,
+      };
+    }
+    event.reply('login', res);
   }
 };
 
 export const upload = async (
-  num: string,
-  key: string
+  fob: Fob
 ): Promise<{ success: boolean; message: string }> => {
-  const fobNumber = num.toUpperCase();
+  const fobNumber = fob.fobNumber.toUpperCase();
   try {
     const { data } = await axios.post(
       `${env}/api/fobs/uploadFob`,
       {
         fobNumber,
-        key: `${key}`,
+        key: `${fob.secret}`,
       },
       { timeout: 30000, headers: { Authorization: `Bearer ${accessToken}` } }
     );
@@ -63,7 +72,7 @@ export const upload = async (
 export const uploadMany = async (
   fobs: Fob[]
 ): Promise<{ success: boolean; message: string; remain: number }> => {
-  const promises = fobs.map((fob) => upload(fob.fobNumber, fob.secret));
+  const promises = fobs.map((fob) => upload(fob));
   const results = await Promise.all(promises);
   if (results.every((result) => result.success))
     return { success: true, message: 'All uploaded', remain: 0 };

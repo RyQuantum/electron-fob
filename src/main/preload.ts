@@ -3,8 +3,8 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 export type Channels =
   | 'ipc-example'
   | 'start'
+  | 'start2'
   | 'stop'
-  | 'alert' // TODO what is this?
   | 'login'
   | 'upload'
   | 'uploadAll';

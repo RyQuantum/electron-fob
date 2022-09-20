@@ -15,11 +15,7 @@ import log from 'electron-log';
 import MenuBuilder from './menu';
 import * as db from './db';
 import * as api from './api';
-import {
-  alertExitWarning,
-  convertNumbersToDecimal,
-  resolveHtmlPath,
-} from './util';
+import { alertWarning, convertNumbersToDecimal, resolveHtmlPath } from './util';
 import NfcController from './NfcController';
 
 class AppUpdater {
@@ -79,9 +75,9 @@ const createWindow = async () => {
   mainWindow = new BrowserWindow({
     show: false,
     width: 1024,
-    minWidth: 1000,
-    height: 728,
-    minHeight: 680,
+    minWidth: 1024,
+    height: 660,
+    minHeight: 660,
     icon: getAssetPath('icon.png'),
     webPreferences: {
       sandbox: false,
@@ -125,12 +121,12 @@ const createWindow = async () => {
       fobs.map((fob) => fob.fobNumber)
     ).join(', ');
     const message = `There are some fobs haven't been uploaded:\n${fobNumbers}\nDo you want to upload them before exit?`;
-    let resp = await alertExitWarning(message);
+    let resp = await alertWarning(message);
     let res = { remain: -1, success: false, message: '' };
     while (resp.response === 0) {
       mainWindow!.webContents.send('uploadAll', true);
       // eslint-disable-next-line no-await-in-loop
-      res = await api.uploadMany(fobs); //  TODO update tsconfig for all await
+      res = await api.uploadMany(fobs);
       mainWindow!.webContents.send('uploadAll', false);
       if (res.success) {
         mainWindow!.hide();
@@ -140,7 +136,7 @@ const createWindow = async () => {
         return;
       }
       // eslint-disable-next-line no-await-in-loop
-      resp = await alertExitWarning(
+      resp = await alertWarning(
         `Some of them uploaded failed:\n${res.message}\nDo you want to retry?`
       );
     } // TODO test if exit or not as expected in success or failed cases

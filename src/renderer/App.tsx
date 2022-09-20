@@ -1,122 +1,136 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import { Button, Form, List, Modal, Radio, Input, Spin } from 'antd';
+import {
+  Button,
+  Form,
+  List,
+  Modal,
+  Radio,
+  Input,
+  Spin,
+  Table,
+  Badge,
+  Checkbox,
+} from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
-import React, {
-  useCallback,
-  useState,
-  useRef,
-  useEffect,
-  useContext,
-} from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useEvent } from 'react-use';
 
 import 'antd/dist/antd.css';
 import './App.css';
 import { Fob } from '../main/db';
 import nfc from '../../assets/nfc.gif';
-import FobTable, { VerifyContext } from './FobTable';
+// import FobTable, { VerifyContext } from './FobTable';
 
 const { ipcRenderer } = window.electron;
 
-// const columns = [
-//   {
-//     title: 'ID',
-//     dataIndex: 'id',
-//     key: 'id',
-//   },
-//   {
-//     title: 'Fob Number',
-//     dataIndex: 'fobNumber',
-//     key: 'fobNumber',
-//   },
-//   {
-//     title: 'State',
-//     dataIndex: 'state',
-//     key: 'state',
-//     render: (text: string) => (
-//       <span>
-//         {text === 'Add secret - 9000' && <Badge status="success" />}
-//         {text}
-//       </span>
-//     ),
-//   },
-//   {
-//     title: 'Uploaded',
-//     dataIndex: 'uploaded',
-//     key: 'uploaded',
-//     render: (checked: boolean) => <Checkbox checked={checked} />,
-//   },
-// ];
-//
-// type DataType = {
-//   id: number;
-//   key: number;
-//   fobNumber: string;
-//   state?: string;
-//   uploaded: boolean;
-// };
+const columns = [
+  {
+    title: 'ID',
+    dataIndex: 'id',
+    key: 'id',
+  },
+  {
+    title: 'Fob Number',
+    dataIndex: 'fobNumber',
+    key: 'fobNumber',
+  },
+  {
+    title: 'State',
+    dataIndex: 'state',
+    key: 'state',
+    render: (text: string) => (
+      <span>
+        {text === 'Add secret - 9000' && <Badge status="success" />}
+        {text}
+      </span>
+    ),
+  },
+  {
+    title: 'Uploaded',
+    dataIndex: 'uploaded',
+    key: 'uploaded',
+    render: (checked: boolean) => <Checkbox checked={checked} />,
+  },
+];
 
-// const FobTable: React.FC = () => {
-//   const { isVerifying } = useContext(VerifyContext);
-//
-//   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-//   const [current, setCurrent] = useState(1);
-//
-//   const [dataSource, setDataSource] = useState<DataType[]>([]);
-//   const handleFobsEvent = useCallback((fobs: Fob[]) => {
-//     const data = fobs.map((fob) => ({
-//       ...fob,
-//       key: fob.id,
-//       fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
-//     }));
-//     setDataSource(data);
-//     setCurrent(Math.ceil(data.length / 10));
-//   }, []);
-//   useEvent('fobs', handleFobsEvent, ipcRenderer);
-//
-//   const handleFobEvent = useCallback((fob: Fob) => {
-//     setDataSource((prevDataSource) => {
-//       const index = prevDataSource.findIndex((f) => f.id === fob.id);
-//       const obj = {
-//         ...fob,
-//         key: fob.id,
-//         fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
-//       };
-//       if (index === -1) {
-//         prevDataSource.push(obj);
-//       } else {
-//         prevDataSource[index] = obj;
-//       }
-//       setCurrent(Math.ceil(prevDataSource.length / 10));
-//       return [...prevDataSource];
-//     });
-//   }, []);
-//   useEvent('fob', handleFobEvent, ipcRenderer);
-//
-//   return (
-//     <div id="table">
-//       <Table
-//         bordered
-//         dataSource={dataSource}
-//         columns={columns}
-//         pagination={{
-//           current,
-//           showQuickJumper: true,
-//           showTotal: (total, range) =>
-//             `${range[0]}-${range[1]} of ${total} items`,
-//         }}
-//         onChange={(config) =>
-//           setCurrent(config.current || Math.ceil(dataSource.length / 10))
-//         }
-//         rowSelection={{ type: 'radio', selectedRowKeys }}
-//       />
-//     </div>
-//   );
-// };
+type DataType = {
+  id: number;
+  key: number;
+  fobNumber: string;
+  state?: string;
+  uploaded: boolean;
+};
+
+const FobTable: React.FC = () => {
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
+  const [current, setCurrent] = useState(1);
+
+  const [dataSource, setDataSource] = useState<DataType[]>([]);
+  const handleFobsEvent = useCallback((fobs: Fob[]) => {
+    const data = fobs.map((fob) => ({
+      ...fob,
+      key: fob.id,
+      fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
+    }));
+    setDataSource(data);
+    setCurrent(Math.ceil(data.length / 10));
+  }, []);
+  useEvent('fobs', handleFobsEvent, ipcRenderer);
+
+  const handleFobEvent = useCallback((fob: Fob, direction: string | number) => {
+    setDataSource((prevDataSource) => {
+      const index = prevDataSource.findIndex((f) => f.id === fob.id);
+      const obj = {
+        ...fob,
+        key: fob.id,
+        fobNumber: parseInt(fob.fobNumber, 16).toString().padStart(10, '0'),
+      };
+      if (index === -1) {
+        prevDataSource.push(obj);
+      } else {
+        prevDataSource[index] = obj;
+      }
+      if (typeof direction === 'number')
+        setCurrent(Math.floor(direction / 10) + 1);
+      else setCurrent(Math.ceil(prevDataSource.length / 10));
+      return [...prevDataSource];
+    });
+  }, []);
+  useEvent('fob', handleFobEvent, ipcRenderer);
+
+  const handleCardEvent = useCallback((id: number, count: number) => {
+    if (id === -1) {
+      setSelectedRowKeys([]);
+      return;
+    }
+    setSelectedRowKeys([id]);
+    setCurrent(Math.floor(count / 10) + 1);
+  }, []);
+  useEvent('card2', handleCardEvent, ipcRenderer);
+
+  return (
+    <div id="table">
+      <Table
+        bordered
+        size="middle"
+        dataSource={dataSource}
+        columns={columns}
+        pagination={{
+          current,
+          showQuickJumper: true,
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`,
+        }}
+        onChange={(config) =>
+          setCurrent(config.current || Math.ceil(dataSource.length / 10))
+        }
+        rowSelection={{ type: 'radio', selectedRowKeys }}
+      />
+    </div>
+  );
+};
 
 const FobLogs: React.FC = () => {
-  const { isVerifying, setIsVerifying } = useContext(VerifyContext);
-
   const [fobNumber, setFobNumber] = useState('');
   const handleConnectEvent = useCallback((num: string) => {
     const fobNum = num && parseInt(num, 16).toString().padStart(10, '0');
@@ -133,13 +147,13 @@ const FobLogs: React.FC = () => {
   const ref = useRef({ fobNumber: '' }); // TODO research any better way than ref
   const [logs, setLogs] = useState<string[]>([]);
   const handleUsbEvent = useCallback(
-    (fob: Fob, direction: 'req' | 'res' | 'upload') => {
+    (fob: Fob, direction: 'req' | 'res' | number) => {
       setLogs((prevLogs: string[]) => {
+        if (typeof direction === 'number') return [...prevLogs, 'Uploaded'];
         if (fob.fobNumber !== ref.current.fobNumber) {
           ref.current.fobNumber = fob.fobNumber;
           return [fob.state];
         }
-        if (direction === 'upload') return [...prevLogs, 'Uploaded'];
         if (direction === 'res') {
           prevLogs[prevLogs.length - 1] = `${fob.state}`;
           return [...prevLogs];
@@ -152,7 +166,11 @@ const FobLogs: React.FC = () => {
   useEvent('fob', handleUsbEvent, ipcRenderer);
 
   const [isTesting, setIsTesting] = useState(false);
-  const handleInterruptEvent = useCallback(() => setIsTesting(false), []);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const handleInterruptEvent = useCallback(() => {
+    setIsTesting(false);
+    setIsVerifying(false);
+  }, []);
   useEvent('interrupt', handleInterruptEvent, ipcRenderer);
 
   const refs = useRef<HTMLElement[]>([]);
@@ -169,10 +187,20 @@ const FobLogs: React.FC = () => {
                 className="button"
                 type="primary"
                 style={{ width: 65 }}
-                onClick={() => setIsVerifying(!isVerifying)}
+                onClick={() => {
+                  if (isVerifying) {
+                    ipcRenderer.sendMessage('stop', []);
+                    setIsVerifying(false);
+                  } else {
+                    ipcRenderer.once('start2', (arg: boolean) =>
+                      setIsVerifying(arg)
+                    );
+                    ipcRenderer.sendMessage('start2', [fobNumber]);
+                  }
+                }}
                 disabled={isTesting}
               >
-                {isVerifying ? ' Stop ' : 'Verify'}
+                {isVerifying ? 'Stop' : 'Verify'}
               </Button>
               <LoadingOutlined
                 style={{
@@ -245,7 +273,6 @@ const FobLogs: React.FC = () => {
 
 const Content: React.FC = () => {
   const [isUploading, setisUploading] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(true);
 
@@ -325,10 +352,8 @@ const Content: React.FC = () => {
             </Form.Item>
           </Form>
         </Modal>
-        <VerifyContext.Provider value={{ isVerifying, setIsVerifying }}>
-          <FobTable />
-          <FobLogs />
-        </VerifyContext.Provider>
+        <FobTable />
+        <FobLogs />
       </div>
     </Spin>
   );
