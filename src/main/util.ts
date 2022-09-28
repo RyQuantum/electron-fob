@@ -3,6 +3,8 @@ import { URL } from 'url';
 import path from 'path';
 import { BrowserWindow, dialog } from 'electron';
 
+import i18n from '../i18n';
+
 export function delay(time: number) {
   return new Promise((resolve) => setTimeout(resolve, time));
 }
@@ -12,9 +14,7 @@ export function convertNumberToDecimal(fobNumber: string) {
 }
 
 export function convertNumbersToDecimal(fobNumbers: string[]) {
-  return fobNumbers.map((fobNumber) =>
-    parseInt(fobNumber, 16).toString().padStart(10, '0')
-  );
+  return fobNumbers.map((fobNumber) => convertNumberToDecimal(fobNumber));
 }
 
 export function resolveHtmlPath(htmlFileName: string) {
@@ -46,7 +46,7 @@ export async function alertUploadFailed(
   message: string,
   fobNumber: string
 ): Promise<{ response: number }> {
-  const num = convertNumbersToDecimal([fobNumber])[0];
+  const num = convertNumberToDecimal(fobNumber);
   return dialog.showMessageBox(
     new BrowserWindow({
       show: false,
@@ -54,9 +54,11 @@ export async function alertUploadFailed(
     }),
     {
       type: 'error',
-      title: 'Error',
-      message: `Upload ${num} failed, error: ${message} \nDo you want to retry?`,
-      buttons: ['Retry', 'Cancel'],
+      title: i18n.t('error'),
+      message: `${i18n.t('uploadFailedMessage', { num })} ${message}\n${i18n.t(
+        'retryMessage'
+      )}`,
+      buttons: [i18n.t('retry'), i18n.t('cancel')],
     }
   );
 }
@@ -71,9 +73,9 @@ export async function alertWarning(
     }),
     {
       type: 'warning',
-      title: 'Warning',
+      title: i18n.t('warning'),
       message,
-      buttons: ['Yes', 'Cancel'],
+      buttons: [i18n.t('yes'), i18n.t('cancel')],
     }
   );
 }

@@ -122,7 +122,9 @@ const createWindow = async () => {
     const fobNumbers = convertNumbersToDecimal(
       fobs.map((fob) => fob.fobNumber)
     ).join(', ');
-    const message = `There are some fobs haven't been uploaded:\n${fobNumbers}\nDo you want to upload them before exit?`;
+    const message = `${i18n.t('fobsNotUploadMessage')}\n${fobNumbers}\n${i18n.t(
+      'uploadBeforeExit'
+    )}`;
     let resp = await alertWarning(message);
     let res = { remain: -1, success: false, message: '' };
     while (resp.response === 0) {
@@ -139,7 +141,9 @@ const createWindow = async () => {
       }
       // eslint-disable-next-line no-await-in-loop
       resp = await alertWarning(
-        `Some of them uploaded failed:\n${res.message}\nDo you want to retry?`
+        `${i18n.t('someUploadFailedMessage')}\n${res.message}\n${i18n.t(
+          'retryMessage'
+        )}`
       );
     } // TODO test if exit or not as expected in success or failed cases
     mainWindow!.hide();

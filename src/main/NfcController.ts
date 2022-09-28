@@ -6,8 +6,15 @@ import crypto from 'crypto';
 
 import * as api from './api';
 import Encryption from './Encryption';
-import { alert, alertWarning, alertUploadFailed, delay } from './util';
+import {
+  alert,
+  alertWarning,
+  alertUploadFailed,
+  delay,
+  convertNumberToDecimal,
+} from './util';
 import { Fob } from './db';
+import i18n from '../i18n';
 import ResponseError from './ResponseError';
 
 export default class NfcController extends EventEmitter {
@@ -32,15 +39,12 @@ export default class NfcController extends EventEmitter {
   startInit = (event: IpcMainEvent, args: [string]) => {
     const [fobNumber] = args;
     if (fobNumber !== '') {
-      alert(
-        'error',
-        'Please remove the fob from the reader, then click "Init".'
-      );
+      alert('error', i18n.t('removeFobMessage', { button: i18n.t('init') }));
       event.reply('init', false);
       return;
     }
     if (!this.reader) {
-      alert('error', 'No NFC reader is found');
+      alert('error', i18n.t('readerNotFoundMessage'));
       event.reply('init', false);
       return;
     }
@@ -51,15 +55,12 @@ export default class NfcController extends EventEmitter {
   startVerity = (event: IpcMainEvent, args: [string]) => {
     const [fobNumber] = args;
     if (fobNumber !== '') {
-      alert(
-        'error',
-        'Please remove the fob from the reader, then click "Verify".'
-      );
+      alert('error', i18n.t('removeFobMessage', { button: i18n.t('verify') }));
       event.reply('verify', false);
       return;
     }
     if (!this.reader) {
-      alert('error', 'No NFC reader is found');
+      alert('error', i18n.t('readerNotFoundMessage'));
       event.reply('verify', false);
       return;
     }
@@ -95,17 +96,15 @@ export default class NfcController extends EventEmitter {
             });
             this.webContents.send('found', fob.id, count);
             if (!fob.initialized)
-              alert(
-                'error',
-                `The fob wasn't initialized correctly. Please initialize it again.`
-              );
+              alert('error', i18n.t('initializedIncorrectlyMessage'));
             else if (!fob.uploaded) {
+              const num = convertNumberToDecimal(fob.fobNumber);
               const res = await alertWarning(
-                `The fob wasn't uploaded correctly. Do you want to upload it now?`
+                i18n.t('uploadIncorrectlyMessage', { num })
               );
               if (res.response === 0) this.upload(fob);
             }
-          } else alert('error', `The fob hasn't been initialized`);
+          } else alert('error', i18n.t('uninitializedMessage'));
         }
         if (!this.running) return;
         this.webContents.send('initializing', true);
@@ -113,11 +112,16 @@ export default class NfcController extends EventEmitter {
         try {
           let fob = await Fob.findOne({ where: { fobNumber } });
           if (fob?.uploaded) {
-            alert('error', 'The fob has been uploaded');
+            alert('error', i18n.t('uploadedMessage'));
             return;
           }
           if (fob?.initialized) {
-            alert('error', 'The fob has been initialized');
+            // TODO jump the fob page and highlight it?
+            const num = convertNumberToDecimal(fob.fobNumber);
+            const res = await alertWarning(
+              i18n.t('uploadIncorrectlyMessage', { num })
+            );
+            if (res.response === 0) this.upload(fob);
             return;
           }
 
@@ -191,6 +195,10 @@ export default class NfcController extends EventEmitter {
 
       reader.on('error', (err: Error) => {
         console.log(`reader: an error occurred`, reader.reader.name, err);
+        alert(
+          'error',
+          i18n.t('errorOccurredMessage', { name: reader.reader.name }) + err
+        );
       });
 
       reader.on('end', () => {
@@ -198,7 +206,7 @@ export default class NfcController extends EventEmitter {
         this.reader.removeAllListeners();
         this.reader = null;
         if (this.running || this.running2)
-          alert('error', 'NFC reader is unplugged!');
+          alert('error', i18n.t('unplugReaderMessage'));
         this.running = false;
         this.running2 = false;
         this.webContents.send('interrupt');

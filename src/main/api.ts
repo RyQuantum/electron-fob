@@ -119,7 +119,7 @@ export const uploadMany = async (
   const message = list
     .map(
       (index) =>
-        `${convertNumberToDecimal(fobs[index].fobNumber)}:${
+        `${convertNumberToDecimal(fobs[index].fobNumber)}: ${
           results[index].message
         }`
     )

@@ -15,6 +15,29 @@
     "verify": "Verify",
     "stop": "Stop",
     "fob": "Fob",
-    "notDetected": "not detected"
+    "notDetected": "not detected",
+
+    "readerNotFoundMessage": "No NFC reader is found!",
+    "removeFobMessage": "Please remove the fob from the reader, then click \"{{button, string}}\".",
+    "errorOccurredMessage": "{{name, string}} reader: an error occurred ",
+    "unplugReaderMessage": "NFC reader is unplugged!",
+
+    "initializedMessage": "The fob has been initialized",
+    "uploadedMessage": "The fob has been uploaded",
+
+    "initializedIncorrectlyMessage": "The fob wasn't initialized correctly. Please initialize it again.",
+    "uploadIncorrectlyMessage": "The fob {{num, string}} wasn't uploaded correctly. Do you want to upload it now?",
+    "uninitializedMessage": "The fob hasn't been initialized.",
+
+    "fobsNotUploadMessage": "There are some fobs haven't been uploaded: ",
+    "uploadBeforeExit": "Do you want to upload them before exit?",
+    "someUploadFailedMessage": "Some of them uploaded failed: ",
+    "uploadFailedMessage": "Upload {{num, string}} failed, error: ",
+    "retryMessage": "Do you want to retry?",
+    "error": "Error",
+    "warning": "Warning",
+    "yes": "Yes",
+    "cancel": "Cancel",
+    "retry": "Retry"
   }
 }
