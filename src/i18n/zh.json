@@ -1,0 +1,20 @@
+{
+  "translation": {
+    "login": "登录",
+    "username": "用户名",
+    "inputUsername": "请输入用户名！",
+    "password": "密码",
+    "inputPassword": "请输入密码！",
+    "environment": "环境",
+    "production": "生产环境",
+    "language": "语言",
+    "fobNumber": "卡号",
+    "state": "状态",
+    "uploaded": "已上传",
+    "init": "初始化",
+    "verify": "验证",
+    "stop": "停止",
+    "fob": "卡号",
+    "notDetected": "未检测"
+  }
+}

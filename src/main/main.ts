@@ -12,6 +12,8 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+
+import i18n from '../i18n';
 import MenuBuilder from './menu';
 import * as db from './db';
 import * as api from './api';
@@ -162,6 +164,9 @@ const createWindow = async () => {
   // eslint-disable-next-line
   new AppUpdater();
   ipcMain.on('login', api.login);
+  ipcMain.on('language', async (_event, lang: string) =>
+    i18n.changeLanguage(lang)
+  );
 };
 
 /**

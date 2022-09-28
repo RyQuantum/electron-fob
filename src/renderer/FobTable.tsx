@@ -1,9 +1,27 @@
 import { Badge, Checkbox, Table } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useEvent } from 'react-use';
+import { useTranslation } from 'react-i18next';
+
 import { Fob } from '../main/db';
+import './FobTable.css';
 
 const { ipcRenderer } = window.electron;
+
+const FobNumberTitle: React.FC = () => {
+  const { t } = useTranslation();
+  return <span>{t('fobNumber')}</span>;
+};
+
+const StateTitle: React.FC = () => {
+  const { t } = useTranslation();
+  return <span>{t('state')}</span>;
+};
+
+const UploadedTitle: React.FC = () => {
+  const { t } = useTranslation();
+  return <span>{t('uploaded')}</span>;
+};
 
 const columns = [
   {
@@ -12,12 +30,12 @@ const columns = [
     key: 'id',
   },
   {
-    title: 'Fob Number',
+    title: <FobNumberTitle />,
     dataIndex: 'fobNumber',
     key: 'fobNumber',
   },
   {
-    title: 'State',
+    title: <StateTitle />,
     dataIndex: 'state',
     key: 'state',
     render: (text: string) => (
@@ -28,7 +46,7 @@ const columns = [
     ),
   },
   {
-    title: 'Uploaded',
+    title: <UploadedTitle />,
     dataIndex: 'uploaded',
     key: 'uploaded',
     render: (checked: boolean) => <Checkbox checked={checked} />,

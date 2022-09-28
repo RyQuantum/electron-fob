@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { IpcMainEvent } from 'electron';
 import { Fob } from './db';
 import { convertNumberToDecimal } from './util';
@@ -10,6 +10,42 @@ const envs = {
   Production: 'https://app2.keyless.rocks',
   OSS: 'https://keyless.rentlyopensesame.com',
 };
+
+const interceptRequest = async ({
+  method,
+  url,
+  headers = {},
+  params = {},
+  ...rest
+}: AxiosRequestConfig) => {
+  const config = {
+    url,
+    method,
+    params,
+    headers,
+    ...rest,
+  };
+  console.log(
+    `---- req:[${method}]:(${
+      config.baseURL || ''
+    }${url}) params:${JSON.stringify(params)} data:${
+      rest.data instanceof URLSearchParams
+        ? rest.data.toString()
+        : JSON.stringify(rest.data)
+    }`
+  );
+  return config;
+};
+
+const interceptResponse = async ({ data, config, ...rest }: AxiosResponse) => {
+  console.log(
+    `---- res:[${config.method}]:(${config.url}) ${JSON.stringify(data)}`
+  );
+  return { data, config, ...rest };
+};
+
+axios.interceptors.request.use(interceptRequest);
+axios.interceptors.response.use(interceptResponse);
 
 export const login = async (
   event: IpcMainEvent,

@@ -2,12 +2,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useEvent } from 'react-use';
 import { Button, List, Radio } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+
 import { Fob } from '../main/db';
+import './FobLogs.css';
 import nfc from '../../assets/nfc.gif';
 
 const { ipcRenderer } = window.electron;
 
 const FobLogs: React.FC = () => {
+  const { t } = useTranslation();
+
   const [fobNumber, setFobNumber] = useState('');
   const handleConnectEvent = useCallback((num: string) => {
     const fobNum = num && parseInt(num, 16).toString().padStart(10, '0');
@@ -63,7 +68,6 @@ const FobLogs: React.FC = () => {
               <Button
                 className="button"
                 type="primary"
-                style={{ width: 65 }}
                 onClick={() => {
                   if (isVerifying) {
                     ipcRenderer.sendMessage('stop', []);
@@ -77,7 +81,7 @@ const FobLogs: React.FC = () => {
                 }}
                 disabled={isTesting}
               >
-                {isVerifying ? 'Stop' : 'Verify'}
+                {t(isVerifying ? 'stop' : 'verify')}
               </Button>
               <LoadingOutlined
                 style={{
@@ -96,7 +100,9 @@ const FobLogs: React.FC = () => {
                 }}
               />
               <Radio checked={fobNumber !== ''}>
-                Fob{fobNumber !== '' ? `: ${fobNumber}` : ' not detected'}
+                {`${t('fob')}: ${
+                  fobNumber !== '' ? fobNumber : t('notDetected')
+                }`}
               </Radio>
             </div>
             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -112,7 +118,7 @@ const FobLogs: React.FC = () => {
               <Button
                 className="button"
                 type="primary"
-                style={{ width: 65 }}
+                style={{ minWidth: 65 }}
                 onClick={() => {
                   if (isTesting) {
                     ipcRenderer.sendMessage('stop', []);
@@ -126,7 +132,7 @@ const FobLogs: React.FC = () => {
                 }}
                 disabled={isVerifying}
               >
-                {isTesting ? ' Stop ' : 'Init'}
+                {t(isTesting ? 'stop' : 'init')}
               </Button>
             </div>
           </div>

@@ -1,0 +1,20 @@
+{
+  "translation": {
+    "login": "Login",
+    "username": "Username",
+    "inputUsername": "Please input your username!",
+    "password": "Password",
+    "inputPassword": "Please input your password!",
+    "environment": "Environment",
+    "production": "Production",
+    "language": "Language",
+    "fobNumber": "Fob Number",
+    "state": "State",
+    "uploaded": "Uploaded",
+    "init": "Init",
+    "verify": "Verify",
+    "stop": "Stop",
+    "fob": "Fob",
+    "notDetected": "not detected"
+  }
+}
