@@ -127,25 +127,24 @@ const createWindow = async () => {
     )}`;
     let resp = await alertWarning(message);
     let res = { remain: -1, success: false, message: '' };
+    /* eslint-disable no-await-in-loop */
     while (resp.response === 0) {
       mainWindow!.webContents.send('uploadAll', true);
-      // eslint-disable-next-line no-await-in-loop
       res = await api.uploadMany(fobs);
       mainWindow!.webContents.send('uploadAll', false);
       if (res.success) {
         mainWindow!.hide();
-        // eslint-disable-next-line no-await-in-loop
         await db.upload(res.remain);
         app.exit();
         return;
       }
-      // eslint-disable-next-line no-await-in-loop
       resp = await alertWarning(
         `${i18n.t('someUploadFailedMessage')}\n${res.message}\n${i18n.t(
           'retryMessage'
         )}`
       );
     } // TODO test if exit or not as expected in success or failed cases
+    /* eslint-enable no-await-in-loop */
     mainWindow!.hide();
     await db.upload(res.remain === -1 ? fobs.length : res.remain);
     app.exit();
@@ -187,6 +186,7 @@ app.on('window-all-closed', () => {
 
 db.setup();
 
+// TODO single instance check
 app
   .whenReady()
   .then(() => {

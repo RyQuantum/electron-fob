@@ -1,6 +1,5 @@
 import { WebContents, ipcMain, IpcMainEvent } from 'electron';
 import { NFC, Reader } from 'nfc-pcsc';
-import EventEmitter from 'events';
 import { Op } from 'sequelize';
 import crypto from 'crypto';
 
@@ -17,19 +16,18 @@ import { Fob } from './db';
 import i18n from '../i18n';
 import ResponseError from './ResponseError';
 
-export default class NfcController extends EventEmitter {
+export default class NfcController {
   private webContents: WebContents;
 
   private nfc: NFC = null;
 
   private reader: Reader = null;
 
-  private running = false;
+  private isInitRunning = false;
 
-  private running2 = false;
+  private isVerifying = false;
 
   constructor(webContents: WebContents) {
-    super();
     this.webContents = webContents;
     ipcMain.on('init', this.startInit);
     ipcMain.on('verify', this.startVerity);
@@ -48,7 +46,7 @@ export default class NfcController extends EventEmitter {
       event.reply('init', false);
       return;
     }
-    this.running = true;
+    this.isInitRunning = true;
     event.reply('init', true);
   };
 
@@ -64,13 +62,13 @@ export default class NfcController extends EventEmitter {
       event.reply('verify', false);
       return;
     }
-    this.running2 = true;
+    this.isVerifying = true;
     event.reply('verify', true);
   };
 
   stop = () => {
-    this.running = false;
-    this.running2 = false;
+    this.isInitRunning = false;
+    this.isVerifying = false;
     this.webContents.send('found', -1);
   };
 
@@ -88,7 +86,7 @@ export default class NfcController extends EventEmitter {
           .reduce((prev: string, num: number) => num.toString(16) + prev, '');
         console.log(`card detected: ${fobNumber}`);
         this.webContents.send('card', fobNumber);
-        if (this.running2) {
+        if (this.isVerifying) {
           const fob = await Fob.findOne({ where: { fobNumber } });
           if (fob) {
             const count = await Fob.count({
@@ -106,7 +104,7 @@ export default class NfcController extends EventEmitter {
             }
           } else alert('error', i18n.t('uninitializedMessage'));
         }
-        if (!this.running) return;
+        if (!this.isInitRunning) return;
         this.webContents.send('initializing', true);
 
         try {
@@ -127,21 +125,21 @@ export default class NfcController extends EventEmitter {
 
           if (!fob) fob = await Fob.create({ fobNumber });
 
-          await this.selectFob(fob);
+          await this.selectFolder(fob);
           await delay(150); // TODO find reset function if possible
 
-          const secret = fob.secret && !fob.initialized ? fob.secret : null;
-          let res = await this.doExternalAuthentication(fob, secret);
+          let res = await this.doExternalAuthentication(fob, fob.secret); // TODO verify changes and optimize if possible
           if (res.slice(0, 3) === '63c') {
+            // 63cx: Verify fail (0 <= x < 15, key invalid)
             alert(
               'error',
               `External authentication error: res = ${res === '' ? '""' : res}`
             );
           } else if (res === '6a88') {
-            // 6a88: key not found
+            // 6a88: Referenced data not found (key not found)
             res = await this.createFile(fob);
-            // 6a86: the param P1 or P2 is wrong (the file has been created)
             if (res !== '6a86' && res !== '9000') {
+              // 6a86: Incorrect P1 or P2 parameter (the file has been created)
               alert(
                 'error',
                 `Create file error: res = ${res === '' ? '""' : res}`
@@ -190,7 +188,7 @@ export default class NfcController extends EventEmitter {
             .reduce((prev: string, num: number) => num.toString(16) + prev, '')
         );
         this.webContents.send('card', '');
-        if (this.running2) this.webContents.send('found', -1);
+        if (this.isVerifying) this.webContents.send('found', -1);
       });
 
       reader.on('error', (err: Error) => {
@@ -205,10 +203,10 @@ export default class NfcController extends EventEmitter {
         console.log(`device removed`, reader.reader.name);
         this.reader.removeAllListeners();
         this.reader = null;
-        if (this.running || this.running2)
+        if (this.isInitRunning || this.isVerifying)
           alert('error', i18n.t('unplugReaderMessage'));
-        this.running = false;
-        this.running2 = false;
+        this.isInitRunning = false;
+        this.isVerifying = false;
         this.webContents.send('interrupt');
       });
     });
@@ -218,31 +216,27 @@ export default class NfcController extends EventEmitter {
     });
   };
 
-  selectFob = async (fob: Fob) => {
+  selectFolder = async (fob: Fob) => {
     return this.transmit(fob, 'Select MF', '00A40000023F00');
   };
 
   doExternalAuthentication = async (fob: Fob, secret: string | null) => {
     const encryption = new Encryption(secret || 'FFFFFFFFFFFFFFFF');
-    let times = 2;
+    let times = 3;
     let res: string;
+    /* eslint-disable no-await-in-loop */
     do {
-      // eslint-disable-next-line no-await-in-loop
-      res = await this.transmit(
-        fob,
-        'Get random numbers',
-        '008400000400000000'
-      );
+      res = await this.transmit(fob, 'Get random number', '008400000400000000');
       const randomStr = res.slice(0, 8);
       const encrypted = encryption.encrypt(`${randomStr}00000000`);
-      // eslint-disable-next-line no-await-in-loop
       res = await this.transmit(
         fob,
         'External Authentication',
         `0082000008${encrypted}`
       );
       times -= 1;
-    } while (times > 0 && res === '6984');
+    } while (times > 0 && res === '6984'); // 6984: Reference data not usable (invalidated random number)
+    /* eslint-enable no-await-in-loop */
     return res;
   };
 
@@ -298,21 +292,19 @@ export default class NfcController extends EventEmitter {
 
   upload = async (fob: Fob) => {
     let resp = { response: 1 };
+    /* eslint-disable no-await-in-loop */
     do {
-      // eslint-disable-next-line no-await-in-loop
       const res = await api.upload(fob);
       if (!res.success)
-        // eslint-disable-next-line no-await-in-loop
         resp = await alertUploadFailed(res.message, fob.fobNumber);
       else {
-        // eslint-disable-next-line no-await-in-loop
         await fob.update({ uploaded: true });
-        // eslint-disable-next-line no-await-in-loop
         const count = await Fob.count({
           where: { id: { [Op.lt]: fob.id } },
         });
         this.webContents.send('fob', fob.toJSON(), count);
       }
     } while (resp.response !== 1);
+    /* eslint-enable no-await-in-loop */
   };
 }

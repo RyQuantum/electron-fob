@@ -13,8 +13,8 @@ export default class Encryption {
   /**
    * @param {String} secretKey        either 16 or 32 length
    */
-  constructor(secretKey: string | null) {
-    if (secretKey?.length !== 16 && secretKey?.length !== 32) {
+  constructor(secretKey: string) {
+    if (secretKey.length !== 16 && secretKey?.length !== 32) {
       throw new Error('The key length should be either 16 or 32.');
     }
     if (secretKey) this.secretKeyStr = secretKey;

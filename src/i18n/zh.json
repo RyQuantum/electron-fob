@@ -31,7 +31,7 @@
 
     "fobsNotUploadMessage": "发现还有卡片数据没上传，卡号：",
     "uploadBeforeExit": "退出前是否上传？",
-    "someUploadFailedMessage": "部分上传失败：",
+    "someUploadFailedMessage": "部分卡片上传失败：",
     "uploadFailedMessage": "上传卡片{{num, string}}失败，错误：",
     "retryMessage": "是否重试？",
     "error": "错误",
