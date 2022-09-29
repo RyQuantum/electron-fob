@@ -17,14 +17,22 @@ import i18n from '../i18n';
 import MenuBuilder from './menu';
 import * as db from './db';
 import * as api from './api';
-import { alertWarning, convertNumbersToDecimal, resolveHtmlPath } from './util';
+import {
+  alertWarning,
+  alertExitWarning,
+  convertNumbersToDecimal,
+  resolveHtmlPath,
+} from './util';
 import NfcController from './NfcController';
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) app.exit();
 
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
     autoUpdater.logger = log;
-    autoUpdater.checkForUpdatesAndNotify();
+    // autoUpdater.checkForUpdatesAndNotify();
   }
 }
 
@@ -74,6 +82,7 @@ const createWindow = async () => {
     return path.join(RESOURCES_PATH, ...paths);
   };
 
+  let isLogin = false;
   mainWindow = new BrowserWindow({
     show: false,
     width: 1024,
@@ -118,13 +127,24 @@ const createWindow = async () => {
       app.exit();
       return;
     }
-    // TODO if the user clicks the exit button before login, it would be impossible to upload
+
     const fobNumbers = convertNumbersToDecimal(
       fobs.map((fob) => fob.fobNumber)
     ).join(', ');
-    const message = `${i18n.t('fobsNotUploadMessage')}\n${fobNumbers}\n${i18n.t(
-      'uploadBeforeExit'
-    )}`;
+    if (!isLogin) {
+      const message = `${i18n.t(
+        'fobsNotUploadMessage'
+      )}\n${fobNumbers}\n\n${i18n.t('loginBeforeUploadMessage')}`;
+      const resp = await alertExitWarning(message);
+      if (resp.response === 0) return;
+      mainWindow!.hide();
+      await db.upload(fobs.length);
+      app.exit();
+      return;
+    }
+    const message = `${i18n.t(
+      'fobsNotUploadMessage'
+    )}\n${fobNumbers}\n\n${i18n.t('uploadBeforeExitMessage')}`;
     let resp = await alertWarning(message);
     let res = { remain: -1, success: false, message: '' };
     /* eslint-disable no-await-in-loop */
@@ -139,8 +159,8 @@ const createWindow = async () => {
         return;
       }
       resp = await alertWarning(
-        `${i18n.t('someUploadFailedMessage')}\n${res.message}\n${i18n.t(
-          'retryMessage'
+        `${i18n.t('someUploadFailedMessage')}\n${res.message}\n\n${i18n.t(
+          'retryUploadMessage'
         )}`
       );
     } // TODO test if exit or not as expected in success or failed cases
@@ -166,7 +186,9 @@ const createWindow = async () => {
   // Remove this if your app does not use auto updates
   // eslint-disable-next-line
   new AppUpdater();
-  ipcMain.on('login', api.login);
+  ipcMain.on('login', async (e, params) => {
+    isLogin = await api.login(e, params);
+  });
   ipcMain.on('language', async (_event, lang: string) =>
     i18n.changeLanguage(lang)
   );
@@ -186,7 +208,6 @@ app.on('window-all-closed', () => {
 
 db.setup();
 
-// TODO single instance check
 app
   .whenReady()
   .then(() => {

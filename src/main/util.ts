@@ -28,7 +28,7 @@ export function resolveHtmlPath(htmlFileName: string) {
 }
 
 export async function alert(type: string, message: string) {
-  const title = type[0].toUpperCase() + type.slice(1);
+  const title = i18n.t(type);
   return dialog.showMessageBox(
     new BrowserWindow({
       show: false,
@@ -55,9 +55,9 @@ export async function alertUploadFailed(
     {
       type: 'error',
       title: i18n.t('error'),
-      message: `${i18n.t('uploadFailedMessage', { num })} ${message}\n${i18n.t(
-        'retryMessage'
-      )}`,
+      message: `${i18n.t('uploadFailedMessage', {
+        num,
+      })} ${message}\n\n${i18n.t('retryUploadMessage')}`,
       buttons: [i18n.t('retry'), i18n.t('cancel')],
     }
   );
@@ -76,6 +76,23 @@ export async function alertWarning(
       title: i18n.t('warning'),
       message,
       buttons: [i18n.t('yes'), i18n.t('cancel')],
+    }
+  );
+}
+
+export async function alertExitWarning(
+  message: string
+): Promise<{ response: number }> {
+  return dialog.showMessageBox(
+    new BrowserWindow({
+      show: false,
+      alwaysOnTop: true,
+    }),
+    {
+      type: 'warning',
+      title: i18n.t('warning'),
+      message,
+      buttons: [i18n.t('yes'), i18n.t('exit')], // TODO exit button isn't consistent in English
     }
   );
 }

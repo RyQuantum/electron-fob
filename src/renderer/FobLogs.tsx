@@ -5,6 +5,7 @@ import { LoadingOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 
 import { Fob } from '../main/db';
+import { translateState } from '../i18n';
 import './FobLogs.css';
 import nfc from '../../assets/nfc.gif';
 
@@ -30,8 +31,10 @@ const FobLogs: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const handleUsbEvent = useCallback(
     (fob: Fob, direction: 'req' | 'res' | number) => {
+      fob.state = translateState(fob.state);
       setLogs((prevLogs: string[]) => {
-        if (typeof direction === 'number') return [...prevLogs, 'Uploaded'];
+        if (typeof direction === 'number')
+          return [...prevLogs, translateState('Uploaded')];
         if (fob.fobNumber !== ref.current.fobNumber) {
           ref.current.fobNumber = fob.fobNumber;
           return [fob.state];

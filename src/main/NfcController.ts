@@ -114,7 +114,10 @@ export default class NfcController {
             return;
           }
           if (fob?.initialized) {
-            // TODO jump the fob page and highlight it?
+            const count = await Fob.count({
+              where: { id: { [Op.lt]: fob.id } },
+            });
+            this.webContents.send('found', fob.id, count);
             const num = convertNumberToDecimal(fob.fobNumber);
             const res = await alertWarning(
               i18n.t('uploadIncorrectlyMessage', { num })
@@ -128,12 +131,14 @@ export default class NfcController {
           await this.selectFolder(fob);
           await delay(150); // TODO find reset function if possible
 
-          let res = await this.doExternalAuthentication(fob, fob.secret); // TODO verify changes and optimize if possible
+          let res = await this.doExternalAuthentication(fob, fob.secret);
           if (res.slice(0, 3) === '63c') {
             // 63cx: Verify fail (0 <= x < 15, key invalid)
             alert(
               'error',
-              `External authentication error: res = ${res === '' ? '""' : res}`
+              `${i18n.t('externalAuthenticationError')}${i18n.t('res', {
+                res: res === '' ? '""' : res,
+              })}\n\n${i18n.t('reportBackMessage')}`
             );
           } else if (res === '6a88') {
             // 6a88: Referenced data not found (key not found)
@@ -142,7 +147,9 @@ export default class NfcController {
               // 6a86: Incorrect P1 or P2 parameter (the file has been created)
               alert(
                 'error',
-                `Create file error: res = ${res === '' ? '""' : res}`
+                `${i18n.t('createFileError')}${i18n.t('res', {
+                  res: res === '' ? '""' : res,
+                })}\n\n${i18n.t('reportBackMessage')}`
               );
               return;
             }
@@ -151,7 +158,9 @@ export default class NfcController {
           } else if (res !== '9000') {
             alert(
               'error',
-              `External authentication error: res = ${res === '' ? '""' : res}`
+              `${i18n.t('externalAuthenticationError')}${i18n.t('res', {
+                res: res === '' ? '""' : res,
+              })}\n\n${i18n.t('reportBackMessage')}`
             );
           } else {
             res = await this.cleanData(fob);
@@ -159,7 +168,9 @@ export default class NfcController {
             if (res !== '9000') {
               alert(
                 'error',
-                `Create file error: res = ${res === '' ? '""' : res}`
+                `${i18n.t('createFileError')}${i18n.t('res', {
+                  res: res === '' ? '""' : res,
+                })}\n\n${i18n.t('reportBackMessage')}`
               );
               return;
             }
@@ -167,14 +178,20 @@ export default class NfcController {
             this.upload(fob);
           }
         } catch (err) {
-          if (err instanceof ResponseError) {
+          if (err instanceof ResponseError)
             alert(
               'error',
-              `${err.message}: res = ${err.res === '' ? '""' : err.res}`
+              `${i18n.t('unknownError')}${i18n.t('res', {
+                res: err.res === '' ? '""' : err.res,
+              })}\n\n${i18n.t('reportBackMessage')}`
             );
-            return;
-          }
-          alert('error', JSON.stringify(err));
+          else
+            alert(
+              'error',
+              `${i18n.t('unknownError')}${JSON.stringify(err)}\n\n${i18n.t(
+                'reportBackMessage'
+              )}`
+            );
         } finally {
           this.webContents.send('initializing', false);
         }
@@ -231,7 +248,7 @@ export default class NfcController {
       const encrypted = encryption.encrypt(`${randomStr}00000000`);
       res = await this.transmit(
         fob,
-        'External Authentication',
+        'External authentication',
         `0082000008${encrypted}`
       );
       times -= 1;
@@ -249,11 +266,11 @@ export default class NfcController {
   };
 
   addSecret = async (fob: Fob) => {
-    // const secret = 'FFFFFFFFFFFFFFFF';
-    const secret = crypto.randomBytes(16).toString('hex').toUpperCase(); // TODO update it before release
+    const secret = 'FFFFFFFFFFFFFFFF';
+    // const secret = crypto.randomBytes(16).toString('hex').toUpperCase(); // TODO update it before release
     await fob.update({ secret });
-    // await this.transmit(fob, 'Add secret', `80D401000D39F0F1AAFF${secret}`);
-    await this.transmit(fob, 'Add secret', `80D401001539F0F1AAFF${secret}`);
+    await this.transmit(fob, 'Add secret', `80D401000D39F0F1AAFF${secret}`);
+    // await this.transmit(fob, 'Add secret', `80D401001539F0F1AAFF${secret}`);
     await fob.update({ initialized: true });
   };
 
@@ -264,7 +281,7 @@ export default class NfcController {
       'hex'
     );
     await this.display(fob, state, 'res', res);
-    if (state === 'External Authentication' || state === 'Create file')
+    if (state === 'External authentication' || state === 'Create file')
       return res; // check the res in main func
     if (res === '') throw new ResponseError(`${state} error`, '""');
     if (res.slice(-4) !== '9000')

@@ -1,9 +1,12 @@
-import { Badge, Checkbox, Table } from 'antd';
+import { Badge, Checkbox, ConfigProvider, Table } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useEvent } from 'react-use';
 import { useTranslation } from 'react-i18next';
+import zhCN from 'antd/es/locale/zh_CN';
+import en from 'antd/es/locale/default';
 
 import { Fob } from '../main/db';
+import { translateState } from '../i18n';
 import './FobTable.css';
 
 const { ipcRenderer } = window.electron;
@@ -38,12 +41,17 @@ const columns = [
     title: <StateTitle />,
     dataIndex: 'state',
     key: 'state',
-    render: (text: string) => (
-      <span>
-        {text === 'Add secret - 9000' && <Badge status="success" />}
-        {text}
-      </span>
-    ),
+    render: (state: string) => {
+      const translatedState = translateState(state);
+      return (
+        <span>
+          {state === 'Add secret - 9000' && (
+            <Badge style={{ marginRight: 5 }} status="success" />
+          )}
+          {translatedState}
+        </span>
+      );
+    },
   },
   {
     title: <UploadedTitle />,
@@ -62,6 +70,8 @@ type DataType = {
 };
 
 const FobTable: React.FC = () => {
+  const { t, i18n } = useTranslation();
+
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
   const [current, setCurrent] = useState(1);
 
@@ -109,24 +119,26 @@ const FobTable: React.FC = () => {
   useEvent('found', handleCardEvent, ipcRenderer);
 
   return (
-    <div id="table">
-      <Table
-        bordered
-        size="middle"
-        dataSource={dataSource}
-        columns={columns}
-        pagination={{
-          current,
-          showQuickJumper: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} of ${total} items`,
-        }}
-        onChange={(config) =>
-          setCurrent(config.current || Math.ceil(dataSource.length / 10))
-        }
-        rowSelection={{ type: 'radio', selectedRowKeys }}
-      />
-    </div>
+    <ConfigProvider locale={i18n.language === 'zh' ? zhCN : en}>
+      <div id="table">
+        <Table
+          bordered
+          size="middle"
+          dataSource={dataSource}
+          columns={columns}
+          pagination={{
+            current,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} ${t('items')}`,
+          }}
+          onChange={(config) =>
+            setCurrent(config.current || Math.ceil(dataSource.length / 10))
+          }
+          rowSelection={{ type: 'radio', selectedRowKeys }}
+        />
+      </div>
+    </ConfigProvider>
   );
 };
 

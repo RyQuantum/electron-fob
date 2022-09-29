@@ -16,4 +16,13 @@ i18n
     },
   });
 
+export const translateState = (text: string) => {
+  if (text.slice(-3) === '...') {
+    return `${i18n.t(text.slice(0, -3))}...`;
+  }
+  const arr = text.split(' - ');
+  arr[0] = i18n.t(arr[0]);
+  return arr.join(' - ');
+};
+
 export default i18n;

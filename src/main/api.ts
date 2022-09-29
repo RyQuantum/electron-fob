@@ -50,7 +50,7 @@ axios.interceptors.response.use(interceptResponse);
 export const login = async (
   event: IpcMainEvent,
   [username, password, envName]: [string, string, 'Production' | 'OSS']
-) => {
+): Promise<boolean> => {
   env = envs[envName];
   try {
     const { data } = await axios.post(
@@ -65,6 +65,7 @@ export const login = async (
     );
     accessToken = data.access_token;
     event.reply('login', { success: true });
+    return true;
   } catch (err) {
     const error = err as AxiosError;
     let res;
@@ -82,6 +83,7 @@ export const login = async (
       };
     }
     event.reply('login', res);
+    return false;
   }
 };
 

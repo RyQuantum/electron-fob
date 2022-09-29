@@ -16,28 +16,46 @@
     "stop": "Stop",
     "fob": "Fob",
     "notDetected": "not detected",
+    "items": "items",
+
+    "Select MF": "Select MF",
+    "Get random number": "Get random number",
+    "External authentication": "External authentication",
+    "Clean data": "Clean data",
+    "Create file": "Create file",
+    "Add secret": "Add secret",
+    "Uploaded": "Uploaded",
 
     "readerNotFoundMessage": "No NFC reader is found!",
     "removeFobMessage": "Please remove the fob from the reader, then click \"{{button, string}}\".",
-    "errorOccurredMessage": "{{name, string}} reader: an error occurred ",
+    "errorOccurredMessage": "{{name, string}} reader error: ",
     "unplugReaderMessage": "NFC reader is unplugged!",
+
+    "externalAuthenticationError": "External authentication error: ",
+    "createFileError": "Create file error: ",
+    "unknownError": "Unknown error: ：",
+    "res": "res = {{res, string}}",
+    "invalidKeyMessage": "Fob key is invalid",
+    "reportBackMessage": "Please retry and do NOT move the fob when initializing it.\nIf it always throws this error, please take the screenshot and contact with us!",
 
     "initializedMessage": "The fob has been initialized",
     "uploadedMessage": "The fob has been uploaded",
 
     "initializedIncorrectlyMessage": "The fob wasn't initialized correctly. Please initialize it again.",
-    "uploadIncorrectlyMessage": "The fob {{num, string}} wasn't uploaded correctly. Do you want to upload it now?",
+    "uploadIncorrectlyMessage": "The fob {{num, string}} wasn't uploaded correctly.\n\nDo you want to upload it now?",
     "uninitializedMessage": "The fob hasn't been initialized.",
 
     "fobsNotUploadMessage": "There are some fobs haven't been uploaded: ",
-    "uploadBeforeExit": "Do you want to upload them before exit?",
+    "loginBeforeUploadMessage": "Cannot upload them without login. Do you want to login now?",
+    "uploadBeforeExitMessage": "Do you want to upload them before exit?",
     "someUploadFailedMessage": "Some of them uploaded failed: ",
     "uploadFailedMessage": "Upload {{num, string}} failed, error: ",
-    "retryMessage": "Do you want to retry?",
+    "retryUploadMessage": "Do you want to retry upload?",
     "error": "Error",
     "warning": "Warning",
     "yes": "Yes",
     "cancel": "Cancel",
+    "exit": "Exit",
     "retry": "Retry"
   }
 }

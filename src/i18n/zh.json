@@ -16,28 +16,46 @@
     "stop": "停止",
     "fob": "卡号",
     "notDetected": "未检测",
+    "items": "项",
+
+    "Select MF": "选择MF",
+    "Get random number": "获取随机数",
+    "External authentication": "外部认证",
+    "Clean data": "清空数据",
+    "Create file": "创建文件",
+    "Add secret": "添加密钥",
+    "Uploaded": "已上传",
 
     "readerNotFoundMessage": "NFC读卡器未找到！",
     "removeFobMessage": "请移开卡片再点击\"{{button, string}}\"按键。",
-    "errorOccurredMessage": "{{name, string}}读卡器：出现错误 ",
+    "errorOccurredMessage": "{{name, string}}读卡器错误：",
     "unplugReaderMessage": "NFC读卡器已断开！",
+
+    "externalAuthenticationError": "外部认证错误：",
+    "createFileError": "创建文件错误：",
+    "unknownError": "未知错误：",
+    "res": "卡片返回值 = {{res, string}}",
+    "invalidKeyMessage": "卡片密钥错误",
+    "reportBackMessage": "请重试，初始化时切勿移动卡片。\n如仍未解决问题，请截图并与我们联系！",
 
     "initializedMessage": "卡片已被初始化",
     "uploadedMessage": "卡片已上传",
 
     "initializedIncorrectlyMessage": "卡片未初始化成功。请重新初始化。",
-    "uploadIncorrectlyMessage": "卡片{{num, string}}未上传成功。现在上传？",
+    "uploadIncorrectlyMessage": "卡片{{num, string}}未上传成功。\n\n现在上传？",
     "uninitializedMessage": "卡片未初始化",
 
     "fobsNotUploadMessage": "发现还有卡片数据没上传，卡号：",
-    "uploadBeforeExit": "退出前是否上传？",
+    "loginBeforeUploadMessage": "未登录无法上传，现在是否登录？",
+    "uploadBeforeExitMessage": "退出前是否上传？",
     "someUploadFailedMessage": "部分卡片上传失败：",
     "uploadFailedMessage": "上传卡片{{num, string}}失败，错误：",
-    "retryMessage": "是否重试？",
+    "retryUploadMessage": "是否重新上传？",
     "error": "错误",
     "warning": "警告",
     "yes": "是",
     "cancel": "取消",
+    "exit": "退出",
     "retry": "重试"
   }
 }
