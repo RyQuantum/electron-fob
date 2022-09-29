@@ -1,12 +1,12 @@
 {
-  "name": "electron-react-boilerplate",
-  "version": "4.6.0",
-  "description": "A foundation for scalable desktop apps",
+  "name": "cpu-fob-register",
+  "version": "1.0.0",
+  "description": "CPU fob initialization software",
   "license": "MIT",
   "author": {
-    "name": "Electron React Boilerplate Maintainers",
-    "email": "electronreactboilerplate@gmail.com",
-    "url": "https://github.com/electron-react-boilerplate"
+    "name": "Ryan",
+    "email": "ryan@rently.com",
+    "url": "https://github.com/mayue3434"
   },
   "main": "./dist/main/main.js",
   "scripts": {
@@ -18,5 +18,8 @@
     "@journeyapps/sqlcipher": "^5.3.1",
     "nfc-pcsc": "^0.8.1",
     "sequelize": "^6.21.6"
+  },
+  "resolutions": {
+    "nan": "github:tec27/nan#remove_accessor_signature"
   }
 }
