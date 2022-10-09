@@ -270,11 +270,11 @@ export default class NfcController {
   };
 
   addSecret = async (fob: Fob) => {
-    const secret = 'FFFFFFFFFFFFFFFF';
-    // const secret = crypto.randomBytes(16).toString('hex').toUpperCase(); // TODO update it before release
+    // const secret = 'FFFFFFFFFFFFFFFF';
+    const secret = crypto.randomBytes(16).toString('hex').toUpperCase();
     await fob.update({ secret });
-    await this.transmit(fob, 'Add secret', `80D401000D39F0F1AAFF${secret}`);
-    // await this.transmit(fob, 'Add secret', `80D401001539F0F1AAFF${secret}`);
+    // await this.transmit(fob, 'Add secret', `80D401000D39F0F1AAFF${secret}`);
+    await this.transmit(fob, 'Add secret', `80D401001539F0F1AAFF${secret}`);
     await fob.update({ initialized: true });
   };
 
