@@ -324,6 +324,7 @@ export default class NfcController {
           where: { id: { [Op.lt]: fob.id } },
         });
         this.webContents.send('fob', fob.toJSON(), count);
+        break;
       }
     } while (resp.response !== 1);
     /* eslint-enable no-await-in-loop */
