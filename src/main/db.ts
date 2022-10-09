@@ -5,6 +5,8 @@ import nodemailer from 'nodemailer';
 import { promises as fs } from 'fs';
 import os from 'os';
 
+import { alert } from './util';
+
 const sequelize = new Sequelize('database', '', 'Rently123', {
   dialect: 'sqlite',
   storage: `${app.getPath('appData')}/Rently/Fob Register/sqlite.db`,
@@ -76,7 +78,9 @@ export const load = async (): Promise<Fob[]> => {
     const fobs = await Fob.findAll({ raw: true });
     return fobs;
   } catch (err) {
-    console.error('Unable to connect to the database:', err);
+    const error = err as Error;
+    console.error('Unable to connect to the database:', error);
+    alert('error', error.message);
     return [];
   }
 };
