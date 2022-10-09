@@ -83,7 +83,11 @@ export default class NfcController {
       reader.on('card', async (card) => {
         const fobNumber = card.atr
           .slice(-5, -1)
-          .reduce((prev: string, num: number) => num.toString(16) + prev, '');
+          .reduce(
+            (prev: string, num: number) =>
+              num.toString(16).padStart(2, '0') + prev,
+            ''
+          );
         console.log(`card detected: ${fobNumber}`);
         this.webContents.send('card', fobNumber);
         if (this.isVerifying) {
